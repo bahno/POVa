@@ -120,8 +120,7 @@ class CocoDataset(Dataset):
 
 
 if __name__ == '__main__':
-    root_dir = '/home/marek/Documents/POVa/datasets/coco2017/train/data'
-    annotation_file = '/home/marek/Documents/POVa/datasets/coco2017/train/labels.json'
+    
 
     # Transformace pro změnu velikosti obrázku na 256x256
     transform = transforms.Compose([
