@@ -31,8 +31,8 @@ class davis2017Dataset(Dataset):
         return len(self.imgDirs)
 
     def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.dataDir, self.imgDirs.get_value(idx,"ImageDirNames"),self.seqNum + '.jpg')).convert("RGB")
-        gt = np.array(Image.open(os.path.join(self.gtDir, self.imgDirs.get_value(idx,"ImageDirNames"),self.seqNum + '.png')).convert("L"), dtype=np.float32)
+        img = Image.open(os.path.join(self.dataDir, self.imgDirs.at[idx,"ImageDirNames"], self.seqNum + '.jpg')).convert("RGB")
+        gt = np.array(Image.open(os.path.join(self.gtDir, self.imgDirs.at[idx,"ImageDirNames"], self.seqNum + '.png')).convert("L"), dtype=np.float32)
 
         gt = ((gt/np.max([gt.max(), 1e-8])) > 0.5).astype(np.float32)
 

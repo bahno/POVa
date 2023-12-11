@@ -1,5 +1,5 @@
-import cv2
-import segmentation
+#import cv2
+#import segmentation
 from dataloader import davis2017Dataset
 from torchvision import transforms
 from torch.optim import Adam
@@ -92,12 +92,12 @@ if __name__ == '__main__':
         trainingDataloader=trainData,
         validatinDataloader=valData,
         criterion=criterion,
-        epochs=10
+        epochs=2
     )
 
     trainLoss, valLoss = trainer.run()
 
-    model_pkl_file = "model_" + lr  + ".pkl"
+    model_pkl_file = "model_" + str(lr)  + ".pkl"
 
     with open(model_pkl_file, 'wb') as file:  
         pickle.dump(model, file)
