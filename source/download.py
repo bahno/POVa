@@ -8,8 +8,8 @@ from zipfile import ZipFile
 DavisDatasetUrls = {
     "train480p": "https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-trainval-480p.zip",
     "test480p": "https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-test-dev-480p.zip",
-    "trainFull": "https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-trainval-Full-Resolution.zip",
-    "testFull": "https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-test-dev-Full-Resolution.zip"
+    # "trainFull": "https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-trainval-Full-Resolution.zip",
+    # "testFull": "https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-test-dev-Full-Resolution.zip"
 }
 
 
@@ -44,11 +44,11 @@ def downloadDavisDataset(url, path):
 
 
 if __name__ == '__main__':
-    # downloadDavisDataset(DavisDatasetUrls["train480p"],
-    #                      os.path.abspath(os.path.join(os.path.dirname(__file__), "../datasets/Davis/train480p")))
-    # downloadDavisDataset(DavisDatasetUrls["test480p"],
-    #                      os.path.abspath(os.path.join(os.path.dirname(__file__), "../datasets/Davis/test480p")))
+    downloadDavisDataset(DavisDatasetUrls["train480p"],
+                         os.path.abspath(os.path.join(os.path.dirname(__file__), "../datasets/Davis/train480p")))
+    downloadDavisDataset(DavisDatasetUrls["test480p"],
+                         os.path.abspath(os.path.join(os.path.dirname(__file__), "../datasets/Davis/test480p")))
 
     # COCO dataset
-    dataset = downloadCocoDataset("train", ["segmentations"], ["person"])
-    session = fo.launch_app(dataset)
+    #dataset = downloadCocoDataset("train", ["segmentations"], ["person"])
+    #session = fo.launch_app(dataset)
