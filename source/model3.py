@@ -34,10 +34,24 @@ class decoder_block(nn.Module):
 
     def forward(self, inputs, skip):
         x = self.up(inputs)
-        x = cat([x, skip], axis=1)
+        x = cat([x, skip], dim=1)
         x = self.conv(x)
         return x
     
+class Bridge(nn.Module):
+    """
+    This is the middle layer of the UNet which just consists of some
+    """
+
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.bridge = nn.Sequential(
+            conv_block(in_channels, out_channels),
+            conv_block(out_channels, out_channels)
+        )
+
+    def forward(self, x):
+        return self.bridge(x)
 
 class BackboneEncoder(nn.Module):
     def __init__(self, encoder):
@@ -56,10 +70,11 @@ class BackboneEncoder(nn.Module):
         pre_pools = dict()
         pre_pools[f"layer_0"] = x
         x = self.inputBlock(x)
+        
+
         pre_pools[f"layer_1"] = x
         x = self.inputPool(x)
-
-        for i, block in enumerate(self.down_blocks, 2):
+        for i, block in enumerate(self.downSampleBlocks, 2):
             x = block(x)
             #potřeba nějak změnit, aby to fungovalo, když změníme za jiný resnet
             if i == 5: #(UNetWithResnet50Encoder.DEPTH - 1):
@@ -74,23 +89,23 @@ class BackboneEncoder(nn.Module):
 
 class ourModel(nn.Module):
     def __init__(self):
-        super().__init__
-        self.encoder1 = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1) 
-        self.encoder2 = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-        self.e1 = BackboneEncoder(self.encoder1)
-        self.e2 = BackboneEncoder(self.encoder2)
+        super().__init__()
+        self.e1 = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
+        self.e2 = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
         
     
 
 
-        self.b = conv_block(512, 1024)         
+        self.b = Bridge(1024, 1024)               
         """ Decoder """
         self.decoderBlocks = []
         self.decoderBlocks.append(decoder_block(1024, 512))
         self.decoderBlocks.append(decoder_block(512, 256))
         self.decoderBlocks.append(decoder_block(256, 128))
         self.decoderBlocks.append(decoder_block(128, 64))
-        self.outputs = nn.Conv2d(64, 1, kernel_size=1, padding=0)    
+        self.decoderBlocks.append(decoder_block(64, 32))
+
+        self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)    
 
 
     def forward(self, x1, x2):
@@ -101,16 +116,17 @@ class ourModel(nn.Module):
         x1, prePoolsX1 = self.e1(x1)
         x2, prePoolsX2 = self.e2(x2)
         for key in prePoolsX1:
-            prePoolsX1[key] = cat(prePoolsX1[key],prePoolsX2[key])
-        
-        
-        x = cat(x1,x2)
+            prePoolsX1[key] = cat([prePoolsX1[key],prePoolsX2[key]],dim=1)
+            
 
-        b = self.b(x)         
+        x = cat([x1,x2],dim=1)
+        x = self.b(x)         
 
         for i, block in enumerate(self.decoderBlocks, 1): 
-            key = f"layer_{5 - 1 - i}"
+            key = f"layer_{5 - i}"
+           
             x = block(x, prePoolsX1[key])
+
 
 
 

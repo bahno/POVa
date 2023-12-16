@@ -1,6 +1,6 @@
 import cv2
 import os
-
+import sys
 import numpy as np
 from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
@@ -68,7 +68,10 @@ def merge_all_in_folder(folder_path_in: str):
             try:
                 merge.save(merged_path)
             except FileNotFoundError:
-                dir_path = "/".join(merged_path.split("\\")[:-1])
+                if sys.platform.startswith('linux'):
+                    dir_path = "/".join(merged_path.split("/")[:-1])
+                elif sys.platform.startswith('win32'):
+                    dir_path = "/".join(merged_path.split("\\")[:-1])
                 os.makedirs(dir_path)
 
 

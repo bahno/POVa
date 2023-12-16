@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from lossfunc import DiceLoss, DiceBCELoss, IoULoss
 import pickle
 from utils import plotLoss
-
+from model3 import ourModel
 """
 # Replace 'video_file_path' with the path to your video file
 video_file_path = '../data/travolta.gif'
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # datasets preparation
     trainDataset = davis2017Dataset(transform=transform)
     valDataset = davis2017Dataset(
-        gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/',
+        #gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/',
         dataDir='../datasets/Davis/train480p/DAVIS/JPEGImages/480p/',
         annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/val.txt',
         transform=transform)
@@ -76,7 +76,8 @@ if __name__ == '__main__':
     valData = DataLoader(valDataset, batch_size=batch_size, shuffle=True)
 
     # model
-    model = build_unet()
+    #model = build_unet()
+    model = ourModel()
 
     criterion = DiceLoss()
     lr = 0.001

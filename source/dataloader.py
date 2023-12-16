@@ -12,41 +12,46 @@ import numpy as np
 
 class davis2017Dataset(Dataset):
     def __init__(self, 
-            gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/', 
+            #gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/', 
             dataDir = '../datasets/Davis/train480p/DAVIS/JPEGImages/480p/', 
             annotationsFile= '../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
-            seqNum = '00000',
+            
+            seqNum = 0,
             transform=None, 
             target_transform=None):
    
 
         self.dataDir = dataDir
-        self.gtDir = gtDir
+        self.gtDir = dataDir.replace("JPEGImages", "Annotations")
+        self.mergedDir = dataDir.replace("JPEGImages", "Merged")
         self.imgDirs = pd.read_csv(annotationsFile, header=None, names=["ImageDirNames"])
         self.transform = transform
         self.target_transform = target_transform
-        self.seqNum = seqNum
+        self.seqNum = str(seqNum).zfill(5)
+        self.nextSeqNum = str(seqNum + 1).zfill(5)
 
     def __len__(self):
         return len(self.imgDirs)
 
     def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.dataDir, self.imgDirs.at[idx,"ImageDirNames"], self.seqNum + '.jpg')).convert("RGB")
-        gt = np.array(Image.open(os.path.join(self.gtDir, self.imgDirs.at[idx,"ImageDirNames"], self.seqNum + '.png')).convert("L"), dtype=np.float32)
+        currImg = Image.open(os.path.join(self.mergedDir, self.imgDirs.at[idx,"ImageDirNames"], self.seqNum + '.jpg')).convert("RGB")
+        prevImage =  Image.open(os.path.join(self.dataDir, self.imgDirs.at[idx,"ImageDirNames"], self.nextSeqNum + '.jpg')).convert("RGB")
+        gt = np.array(Image.open(os.path.join(self.gtDir, self.imgDirs.at[idx,"ImageDirNames"], self.nextSeqNum + '.png')).convert("L"), dtype=np.float32)
 
         gt = ((gt/np.max([gt.max(), 1e-8])) > 0.5).astype(np.float32)
 
         gt = Image.fromarray(np.uint8((gt)*255))
         if self.transform is not None:
 
-            img = self.transform(img)
+            currImg = self.transform(currImg)
+            prevImage = self.transform(prevImage)
             gt = self.transform(gt)
 
         """
         if self.pad_mirroring:
             img = Pad(padding=self.pad_mirroring, padding_mode="reflect")(img)"""
 
-        return img, gt
+        return prevImage, currImg, gt
 
 
 
@@ -142,6 +147,6 @@ if __name__ == '__main__':
     batch_size = 8
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    for inputs, masks in dataloader:
-        print(masks)
+    for prevImage, currImg, gt in dataloader:
+        print(prevImage)
 

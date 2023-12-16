@@ -54,9 +54,9 @@ class Trainer:
             leave=False,
         )
 
-        for i, (input, gt) in batch_iter:
+        for i, (prevImage, currImg, gt) in batch_iter:
             self.optimizer.zero_grad() #set grads to None
-            out = self.model(input)
+            out = self.model(prevImage, currImg)
             loss = self.criterion(out, gt)
             trainingLosses.append(loss.item())
             loss.backward()
@@ -76,9 +76,10 @@ class Trainer:
             leave=False,
         )        
 
-        for i, (input, gt) in batch_iter:
+        #for i, (input, gt) in batch_iter:
+        for i, (prevImage, currImg, gt) in batch_iter:
             with torch.no_grad():
-                out = self.model(input)
+                out = self.model(prevImage, currImg)
                 loss = self.criterion(out,gt)
                 validLosses.append(loss.item())
             
