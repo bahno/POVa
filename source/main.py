@@ -2,6 +2,7 @@
 # import segmentation
 from dataloader import davis2017Dataset
 from torchvision import transforms
+import torch.nn as nn
 from torch.optim import Adam
 from model2 import build_unet
 from trainer import Trainer
@@ -10,6 +11,7 @@ from lossfunc import DiceLoss, DiceBCELoss, IoULoss
 import pickle
 from utils import plotLoss
 from model3 import ourModel
+from model4 import UNetWithResnet50Encoder
 """
 # Replace 'video_file_path' with the path to your video file
 video_file_path = '../data/travolta.gif'
@@ -70,16 +72,16 @@ if __name__ == '__main__':
         annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/val.txt',
         transform=transform)
 
-    batch_size = 16
+    batch_size = 4
 
     trainData = DataLoader(trainDataset, batch_size=batch_size, shuffle=True)
     valData = DataLoader(valDataset, batch_size=batch_size, shuffle=True)
 
     # model
     #model = build_unet()
-    model = ourModel()
+    model = UNetWithResnet50Encoder()
 
-    criterion = DiceLoss()
+    criterion = nn.BCEWithLogitsLoss()#DiceLoss()
     lr = 0.001
 
     trainer = Trainer(
@@ -90,11 +92,10 @@ if __name__ == '__main__':
         criterion=criterion,
         epochs=2
     )
-
+    
     trainLoss, valLoss = trainer.run()
 
     model_pkl_file = "model_" + str(lr) + ".pkl"
-
     with open(model_pkl_file, 'wb') as file:
         pickle.dump(model, file)
 

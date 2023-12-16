@@ -27,14 +27,29 @@ class conv_block(nn.Module):
 
 
 class decoder_block(nn.Module):
-    def __init__(self, in_c, out_c):
+    def __init__(self, in_c, out_c, in_c1 = None, out_c1 = None):
         super().__init__()
-        self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=2, stride=2, padding=0)
-        self.conv = conv_block(out_c+out_c, out_c)
+        if (in_c1 == None ):
+            self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=2, stride=2, padding=0)
+            self.conv = conv_block(out_c + out_c, out_c)
+        else:
+            self.up = nn.ConvTranspose2d(in_c1, out_c1, kernel_size=2, stride=2)
+            self.conv = conv_block(out_c, out_c)
 
     def forward(self, inputs, skip):
+        print("Inputs:")
+        print(inputs.shape)
+
         x = self.up(inputs)
+        print("x1:")
+        print(x.shape)
+        print("Skip:")
+        print(skip.shape)
         x = cat([x, skip], dim=1)
+        print("x2:")
+
+        print(x.shape)
+
         x = self.conv(x)
         return x
     
@@ -51,6 +66,7 @@ class Bridge(nn.Module):
         )
 
     def forward(self, x):
+        print(x.shape)
         return self.bridge(x)
 
 class BackboneEncoder(nn.Module):
@@ -58,29 +74,27 @@ class BackboneEncoder(nn.Module):
         super().__init__()
         self.encoder1 = encoder
         
-        self.downSampleBlocks = []
+        downSampleBlocks = []
         self.inputBlock = nn.Sequential(*list(encoder.children()))[:3]
         self.inputPool = list(encoder.children())[3]
         for bottleneck in list(self.encoder1.children()):
             if isinstance(bottleneck, nn.Sequential):
-                self.downSampleBlocks.append(bottleneck)
-
+                downSampleBlocks.append(bottleneck)
+        self.downSampleBlocks = nn.ModuleList(downSampleBlocks)
     
     def forward(self, x):
         pre_pools = dict()
         pre_pools[f"layer_0"] = x
         x = self.inputBlock(x)
-        
-
         pre_pools[f"layer_1"] = x
         x = self.inputPool(x)
+
         for i, block in enumerate(self.downSampleBlocks, 2):
             x = block(x)
             #potřeba nějak změnit, aby to fungovalo, když změníme za jiný resnet
             if i == 5: #(UNetWithResnet50Encoder.DEPTH - 1):
                 continue
             pre_pools[f"layer_{i}"] = x
-
 
         return x, pre_pools
 
@@ -101,9 +115,9 @@ class ourModel(nn.Module):
         self.decoderBlocks = []
         self.decoderBlocks.append(decoder_block(1024, 512))
         self.decoderBlocks.append(decoder_block(512, 256))
-        self.decoderBlocks.append(decoder_block(256, 128))
-        self.decoderBlocks.append(decoder_block(128, 64))
-        self.decoderBlocks.append(decoder_block(64, 32))
+        self.decoderBlocks.append(decoder_block(256, 64))
+        self.decoderBlocks.append(decoder_block(192, 128, 256, 128))
+        self.decoderBlocks.append(decoder_block(64 + 3, 64, 128, 64))
 
         self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)    
 
@@ -115,17 +129,29 @@ class ourModel(nn.Module):
         """
         x1, prePoolsX1 = self.e1(x1)
         x2, prePoolsX2 = self.e2(x2)
-        for key in prePoolsX1:
-            prePoolsX1[key] = cat([prePoolsX1[key],prePoolsX2[key]],dim=1)
-            
+        print("SKIP layers")
 
+        for key in prePoolsX1:
+            print(prePoolsX1[key].shape)
+            print(prePoolsX2[key].shape)
+            prePoolsX1[key] = cat([prePoolsX1[key],prePoolsX2[key]],dim=1)
+            print("X:")
+            print(prePoolsX1[key].shape)
+        print("SKIP layers")
         x = cat([x1,x2],dim=1)
+        print(x.shape)
+
         x = self.b(x)         
+        print(x.shape)
 
         for i, block in enumerate(self.decoderBlocks, 1): 
             key = f"layer_{5 - i}"
-           
+            print(key)
+            print(x.shape)
+
             x = block(x, prePoolsX1[key])
+            print(x.shape)
+
 
 
 
@@ -139,5 +165,5 @@ class ourModel(nn.Module):
 
 
 if __name__ == '__main__':
-    BackboneResnet18 = resnet34(weights=ResNet34_Weights.IMAGENET1K_V1) 
+    BackboneResnet18 = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1) 
    

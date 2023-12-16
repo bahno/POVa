@@ -34,9 +34,8 @@ class Trainer:
         progressbar = trange(self.epochs, desc="Progress")
         for i in progressbar:
             self.epoch += 1 
-
             self._train()
-
+            
             if self.validatinDataloader is not None:
                 self._validate()
 
@@ -44,7 +43,6 @@ class Trainer:
         return self.trainingLoss, self.validationLoss
 
     def _train(self):
-
         self.model.train()
         trainingLosses = []  
         batch_iter = tqdm(
@@ -57,6 +55,7 @@ class Trainer:
         for i, (prevImage, currImg, gt) in batch_iter:
             self.optimizer.zero_grad() #set grads to None
             out = self.model(prevImage, currImg)
+
             loss = self.criterion(out, gt)
             trainingLosses.append(loss.item())
             loss.backward()
