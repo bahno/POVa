@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-#from pycocotools.coco import COCO
+# from pycocotools.coco import COCO
 from PIL import Image
 import json
 import os
@@ -11,16 +11,14 @@ import numpy as np
 
 
 class davis2017Dataset(Dataset):
-    def __init__(self, 
-            #gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/', 
-            dataDir = '../datasets/Davis/train480p/DAVIS/JPEGImages/480p/', 
-            annotationsFile= '../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
-            
-            seqNum = 0,
-            transform=None, 
-            target_transform=None):
-   
+    def __init__(self,
+                 # gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/',
+                 dataDir='../datasets/Davis/train480p/DAVIS/JPEGImages/480p/',
+                 annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
 
+                 seqNum=0,
+                 transform=None,
+                 target_transform=None):
         self.dataDir = dataDir
         self.gtDir = dataDir.replace("JPEGImages", "Annotations")
         self.mergedDir = dataDir.replace("JPEGImages", "Merged")
@@ -34,15 +32,24 @@ class davis2017Dataset(Dataset):
         return len(self.imgDirs)
 
     def __getitem__(self, idx):
-        currImg = Image.open(os.path.join(self.mergedDir, self.imgDirs.at[idx,"ImageDirNames"], self.seqNum + '.jpg')).convert("RGB")
-        prevImage =  Image.open(os.path.join(self.dataDir, self.imgDirs.at[idx,"ImageDirNames"], self.nextSeqNum + '.jpg')).convert("RGB")
-        gt = np.array(Image.open(os.path.join(self.gtDir, self.imgDirs.at[idx,"ImageDirNames"], self.nextSeqNum + '.png')).convert("L"), dtype=np.float32)
+        currImg = Image.open(
+            os.path.join(self.mergedDir, self.imgDirs.at[idx, "ImageDirNames"], self.seqNum + '.jpg').replace(os.sep,
+                                                                                                              '/')).convert(
+            "RGB")
+        prevImage = Image.open(
+            os.path.join(self.dataDir, self.imgDirs.at[idx, "ImageDirNames"], self.nextSeqNum + '.jpg').replace(os.sep,
+                                                                                                                '/')).convert(
+            "RGB")
+        gt = np.array(Image.open(
+            os.path.join(self.gtDir, self.imgDirs.at[idx, "ImageDirNames"], self.nextSeqNum + '.png').replace(os.sep,
+                                                                                                              '/')).convert(
+            "L"),
+                      dtype=np.float32)
 
-        gt = ((gt/np.max([gt.max(), 1e-8])) > 0.5).astype(np.float32)
+        gt = ((gt / np.max([gt.max(), 1e-8])) > 0.5).astype(np.float32)
 
-        gt = Image.fromarray(np.uint8((gt)*255))
+        gt = Image.fromarray(np.uint8((gt) * 255))
         if self.transform is not None:
-
             currImg = self.transform(currImg)
             prevImage = self.transform(prevImage)
             gt = self.transform(gt)
@@ -52,8 +59,6 @@ class davis2017Dataset(Dataset):
             img = Pad(padding=self.pad_mirroring, padding_mode="reflect")(img)"""
 
         return prevImage, currImg, gt
-
-
 
 
 """
@@ -123,13 +128,11 @@ class CocoDataset(Dataset):
         return img, mask
 """
 
-
 if __name__ == '__main__':
-    
 
     # Transformace pro změnu velikosti obrázku na 256x256
     transform = transforms.Compose([
-        transforms.Resize(size=(256,256)),
+        transforms.Resize(size=(256, 256)),
         transforms.ToTensor(),
     ])
 
@@ -139,14 +142,9 @@ if __name__ == '__main__':
         transforms.ToTensor(),
     ])
 
-
-
-
-
-    dataset = davis2017Dataset(transform=transform,target_transform=target_transform)
+    dataset = davis2017Dataset(transform=transform, target_transform=target_transform)
     batch_size = 8
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     for prevImage, currImg, gt in dataloader:
         print(prevImage)
-
