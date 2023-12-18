@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
+
 resnet = torchvision.models.resnet.resnet50(pretrained=True)
 
 
@@ -94,7 +95,6 @@ class UNetWithResnet50Encoder(nn.Module):
                 down_blocks.append(bottleneck)
         self.down_blocks = nn.ModuleList(down_blocks)
 
-
         down_blocks2 = []
         self.input_block2 = nn.Sequential(*list(resnet.children()))[:3]
         self.input_pool2 = list(resnet.children())[3]
@@ -102,8 +102,6 @@ class UNetWithResnet50Encoder(nn.Module):
             if isinstance(bottleneck, nn.Sequential):
                 down_blocks2.append(bottleneck)
         self.down_blocks2 = nn.ModuleList(down_blocks2)
-
-
 
         self.bridge = Bridge(2048, 2048)
         up_blocks.append(UpBlockForUNetWithResNet50(2048, 1024))
@@ -131,19 +129,18 @@ class UNetWithResnet50Encoder(nn.Module):
                 continue
             pre_pools[f"layer_{i}"] = x
 
-        pre_pools[f"layer_0"] = torch.cat([pre_pools[f"layer_0"],y],0)
+        pre_pools[f"layer_0"] = torch.cat([pre_pools[f"layer_0"], y], 0)
         y = self.input_block2(y)
-        pre_pools[f"layer_1"] = torch.cat([pre_pools[f"layer_1"],y],0)
+        pre_pools[f"layer_1"] = torch.cat([pre_pools[f"layer_1"], y], 0)
         y = self.input_pool2(y)
 
         for i, block in enumerate(self.down_blocks2, 2):
             y = block(y)
             if i == (UNetWithResnet50Encoder.DEPTH - 1):
                 continue
-            pre_pools[f"layer_{i}"] = torch.cat([pre_pools[f"layer_{i}"],y],0)
+            pre_pools[f"layer_{i}"] = torch.cat([pre_pools[f"layer_{i}"], y], 0)
 
-
-        x = self.bridge(torch.cat([x,y],0))
+        x = self.bridge(torch.cat([x, y], 0))
 
         for i, block in enumerate(self.up_blocks, 1):
             key = f"layer_{UNetWithResnet50Encoder.DEPTH - 1 - i}"
@@ -152,6 +149,7 @@ class UNetWithResnet50Encoder(nn.Module):
 
         return x
 
+
 model = UNetWithResnet50Encoder()
 inp = torch.rand((2, 3, 512, 512))
-out = model(inp,inp)
+out = model(inp, inp)
