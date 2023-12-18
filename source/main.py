@@ -79,7 +79,8 @@ if __name__ == '__main__':
 
     # model
     #model = build_unet()
-    model = UNetWithResnet50Encoder()
+    model = ourModel()
+    #model = UNetWithResnet50Encoder()
 
     criterion = nn.BCEWithLogitsLoss()#DiceLoss()
     lr = 0.001
