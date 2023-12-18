@@ -6,15 +6,15 @@ from segmentation_models_pytorch.encoders import get_preprocessing_fn
 from torchsummary import summary
 
 
-class conv_block(nn.Module):
+class ConvBlock(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
         self.conv1 = nn.Conv2d(in_c, out_c, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(out_c)         
+        self.bn1 = nn.BatchNorm2d(out_c)
         self.conv2 = nn.Conv2d(out_c, out_c, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(out_c)         
-        self.relu = nn.ReLU()     
-        
+        self.bn2 = nn.BatchNorm2d(out_c)
+        self.relu = nn.ReLU()
+
     def forward(self, inputs):
         x = self.conv1(inputs)
         x = self.bn1(x)
@@ -25,63 +25,52 @@ class conv_block(nn.Module):
         return x
 
 
-
-class decoder_block(nn.Module):
-    def __init__(self, in_c, out_c, in_c1 = None, out_c1 = None):
+class DecoderBlock(nn.Module):
+    def __init__(self, up_conv_in, out, skip_in=0):
         super().__init__()
-        if (in_c1 == None ):
-            self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=2, stride=2, padding=0)
-            self.conv = conv_block(out_c + out_c, out_c)
-        else:
-            self.up = nn.ConvTranspose2d(in_c1, out_c1, kernel_size=2, stride=2)
-            self.conv = conv_block(out_c, out_c)
+        
+        self.up = nn.ConvTranspose2d(up_conv_in, out, kernel_size=2, stride=2, padding=0)
+        self.conv = ConvBlock(up_conv_in, out)
 
     def forward(self, inputs, skip):
-        print("Inputs:")
-        print(inputs.shape)
-
+        print(f"     input:          {inputs.shape}")
         x = self.up(inputs)
-        print("x1:")
-        print(x.shape)
-        print("Skip:")
-        print(skip.shape)
+        print(f"     after_up:       {x.shape}")
+        print(f"     skip:           {skip.shape}")
         x = cat([x, skip], dim=1)
-        print("x2:")
-
-        print(x.shape)
+        print(f"     up_skip_cat:    {x.shape}")
 
         x = self.conv(x)
+        print(f"     cat_conv:        {x.shape}\n")
         return x
-    
-class Bridge(nn.Module):
-    """
-    This is the middle layer of the UNet which just consists of some
-    """
 
+
+class Bridge(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.bridge = nn.Sequential(
-            conv_block(in_channels, out_channels),
-            conv_block(out_channels, out_channels)
+            ConvBlock(in_channels, out_channels),
+            ConvBlock(out_channels, out_channels)
         )
 
     def forward(self, x):
-        print(x.shape)
         return self.bridge(x)
+
 
 class BackboneEncoder(nn.Module):
     def __init__(self, encoder):
         super().__init__()
         self.encoder1 = encoder
-        
+
         downSampleBlocks = []
         self.inputBlock = nn.Sequential(*list(encoder.children()))[:3]
         self.inputPool = list(encoder.children())[3]
+
         for bottleneck in list(self.encoder1.children()):
             if isinstance(bottleneck, nn.Sequential):
                 downSampleBlocks.append(bottleneck)
         self.downSampleBlocks = nn.ModuleList(downSampleBlocks)
-    
+
     def forward(self, x):
         pre_pools = dict()
         pre_pools[f"layer_0"] = x
@@ -91,79 +80,84 @@ class BackboneEncoder(nn.Module):
 
         for i, block in enumerate(self.downSampleBlocks, 2):
             x = block(x)
-            #potřeba nějak změnit, aby to fungovalo, když změníme za jiný resnet
-            if i == 5: #(UNetWithResnet50Encoder.DEPTH - 1):
+            # potřeba nějak změnit, aby to fungovalo, když změníme za jiný resnet
+            if i == 5:  # (UNetWithResnet50Encoder.DEPTH - 1):
                 continue
             pre_pools[f"layer_{i}"] = x
 
         return x, pre_pools
 
 
-
-
 class ourModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.e1 = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
-        self.e2 = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
-        
-    
+        self.encoder_image = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
+        self.encoder_mask = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
 
-
-        self.b = Bridge(1024, 1024)               
+        self.bridge = Bridge(1024, 1024)
         """ Decoder """
         self.decoderBlocks = []
-        self.decoderBlocks.append(decoder_block(1024, 512))
-        self.decoderBlocks.append(decoder_block(512, 256))
-        self.decoderBlocks.append(decoder_block(256, 64))
-        self.decoderBlocks.append(decoder_block(192, 128, 256, 128))
-        self.decoderBlocks.append(decoder_block(64 + 3, 64, 128, 64))
 
-        self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)    
+        # L4
+        # in: 1024 from bridge, 512 from skip L4
+        # out: 512
+        self.decoderBlocks.append(DecoderBlock(1024, 512, 512))
 
+        # L3
+        # in: 512 from L4, 256 from skip L3
+        # out: 256
+        self.decoderBlocks.append(DecoderBlock(512, 256, 256))
+
+        # L2
+        # in: 256 from L3, 128 from skip L2
+        # out: 128
+        self.decoderBlocks.append(DecoderBlock(256, 128, 128))
+
+        # L1
+        # in: 128 from L2, 64 from skip L1
+        # out: 64
+        self.decoderBlocks.append(DecoderBlock(128, 64, 64))
+
+        # L0
+        # in: 64 from bridge, 32 from skip l1
+        # out: 32
+        self.decoderBlocks.append(DecoderBlock(64, 32, 32))
+
+        self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)
 
     def forward(self, x1, x2):
         """
         x1 -- frame with mask
         x2 -- frame
         """
-        x1, prePoolsX1 = self.e1(x1)
-        x2, prePoolsX2 = self.e2(x2)
-        print("SKIP layers")
+        x1, skip_data_mask = self.encoder_image(x1)
+        x2, skip_data_image = self.encoder_mask(x2)
 
-        for key in prePoolsX1:
-            print(prePoolsX1[key].shape)
-            print(prePoolsX2[key].shape)
-            prePoolsX1[key] = cat([prePoolsX1[key],prePoolsX2[key]],dim=1)
-            print("X:")
-            print(prePoolsX1[key].shape)
-        print("SKIP layers")
-        x = cat([x1,x2],dim=1)
-        print(x.shape)
+        skip_data_cat = dict()
 
-        x = self.b(x)         
-        print(x.shape)
+        print("\n**** ENCODER ****")
+        for key in skip_data_mask:
+            print("     skip_mask: " + str(skip_data_mask[key].shape))
+            print("     skip_image: " + str(skip_data_image[key].shape))
+            skip_data_cat[key] = cat([skip_data_mask[key], skip_data_image[key]], dim=1)
+            print("     concat skip data: " + str(skip_data_cat[key].shape))
+            print()
 
-        for i, block in enumerate(self.decoderBlocks, 1): 
+        x = cat([x1, x2], dim=1)
+
+        print("\n**** BRIDGE ****")
+        x = self.bridge(x)
+
+        print("\n**** DECODER ****")
+        for i, block in enumerate(self.decoderBlocks, 1):
             key = f"layer_{5 - i}"
-            print(key)
-            print(x.shape)
-
-            x = block(x, prePoolsX1[key])
-            print(x.shape)
-
-
-
-
-
+            print(f"*** {key} ***")
+            x = block(x, skip_data_cat[key])
 
         """ Classifier """
-        outputs = self.outputs(x)        
+        outputs = self.outputs(x)
         return outputs
 
 
-
-
 if __name__ == '__main__':
-    BackboneResnet18 = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1) 
-   
+    BackboneResnet18 = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
