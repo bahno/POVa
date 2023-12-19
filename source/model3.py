@@ -5,6 +5,7 @@ from torch import cat
 from segmentation_models_pytorch.encoders import get_preprocessing_fn
 from torchsummary import summary
 
+verb = False
 
 class ConvBlock(nn.Module):
     def __init__(self, in_c, out_c):
@@ -26,22 +27,22 @@ class ConvBlock(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, up_conv_in, out, skip_in=0):
+    def __init__(self, up_conv_in, out, skip_in):
         super().__init__()
         
-        self.up = nn.ConvTranspose2d(up_conv_in, out, kernel_size=2, stride=2, padding=0)
-        self.conv = ConvBlock(up_conv_in, out)
+        self.up = nn.ConvTranspose2d(2*up_conv_in, up_conv_in, kernel_size=2, stride=2, padding=0)
+        self.conv = ConvBlock(up_conv_in + skip_in, out)
 
     def forward(self, inputs, skip):
-        print(f"     input:          {inputs.shape}")
+        if verb: print(f"     input:          {inputs.shape}")
         x = self.up(inputs)
-        print(f"     after_up:       {x.shape}")
-        print(f"     skip:           {skip.shape}")
+        if verb:
+            print(f"     after_up:       {x.shape}")
+            print(f"     skip:           {skip.shape}")
         x = cat([x, skip], dim=1)
-        print(f"     up_skip_cat:    {x.shape}")
-
+        if verb: print(f"     up_skip_cat:    {x.shape}")
         x = self.conv(x)
-        print(f"     cat_conv:        {x.shape}\n")
+        if verb: print(f"     cat_conv:        {x.shape}\n")
         return x
 
 
@@ -72,10 +73,10 @@ class BackboneEncoder(nn.Module):
         self.downSampleBlocks = nn.ModuleList(downSampleBlocks)
 
     def forward(self, x):
-        pre_pools = dict()
-        pre_pools[f"layer_0"] = x
+        skip_data = dict()
+        skip_data[f"layer_0"] = x
         x = self.inputBlock(x)
-        pre_pools[f"layer_1"] = x
+        skip_data[f"layer_1"] = x
         x = self.inputPool(x)
 
         for i, block in enumerate(self.downSampleBlocks, 2):
@@ -83,9 +84,9 @@ class BackboneEncoder(nn.Module):
             # potřeba nějak změnit, aby to fungovalo, když změníme za jiný resnet
             if i == 5:  # (UNetWithResnet50Encoder.DEPTH - 1):
                 continue
-            pre_pools[f"layer_{i}"] = x
+            skip_data[f"layer_{i}"] = x
 
-        return x, pre_pools
+        return x, skip_data
 
 
 class ourModel(nn.Module):
@@ -101,27 +102,27 @@ class ourModel(nn.Module):
         # L4
         # in: 1024 from bridge, 512 from skip L4
         # out: 512
-        self.decoderBlocks.append(DecoderBlock(1024, 512, 512))
+        self.decoderBlocks.append(DecoderBlock(512, 512, 512))
 
         # L3
         # in: 512 from L4, 256 from skip L3
         # out: 256
-        self.decoderBlocks.append(DecoderBlock(512, 256, 256))
+        self.decoderBlocks.append(DecoderBlock(256, 256, 256))
 
         # L2
         # in: 256 from L3, 128 from skip L2
         # out: 128
-        self.decoderBlocks.append(DecoderBlock(256, 128, 128))
+        self.decoderBlocks.append(DecoderBlock(128, 128, 128))
 
         # L1
         # in: 128 from L2, 64 from skip L1
         # out: 64
-        self.decoderBlocks.append(DecoderBlock(128, 64, 64))
+        self.decoderBlocks.append(DecoderBlock(64, 64, 128))
 
         # L0
         # in: 64 from bridge, 32 from skip l1
         # out: 32
-        self.decoderBlocks.append(DecoderBlock(64, 32, 32))
+        self.decoderBlocks.append(DecoderBlock(32, 32, 6))
 
         self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)
 
@@ -135,23 +136,29 @@ class ourModel(nn.Module):
 
         skip_data_cat = dict()
 
-        print("\n**** ENCODER ****")
+        if verb:
+            print("\n**** ENCODER ****\n")
+
         for key in skip_data_mask:
-            print("     skip_mask: " + str(skip_data_mask[key].shape))
-            print("     skip_image: " + str(skip_data_image[key].shape))
             skip_data_cat[key] = cat([skip_data_mask[key], skip_data_image[key]], dim=1)
-            print("     concat skip data: " + str(skip_data_cat[key].shape))
-            print()
+            if verb:
+                print(f"    *** {key} ***")
+                print("         skip_mask: " + str(skip_data_mask[key].shape))
+                print("         skip_image: " + str(skip_data_image[key].shape))
+                print("         concat skip data: " + str(skip_data_cat[key].shape))
+                print()
 
         x = cat([x1, x2], dim=1)
 
-        print("\n**** BRIDGE ****")
+        if verb: print("\n**** BRIDGE ****")
         x = self.bridge(x)
 
-        print("\n**** DECODER ****")
+        if verb: print("\n**** DECODER ****")
         for i, block in enumerate(self.decoderBlocks, 1):
             key = f"layer_{5 - i}"
-            print(f"*** {key} ***")
+            if verb:
+                print(f"*** {key} ***")
+                print(block)
             x = block(x, skip_data_cat[key])
 
         """ Classifier """
