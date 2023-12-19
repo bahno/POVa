@@ -7,6 +7,7 @@ from torchsummary import summary
 
 verb = False
 
+
 class ConvBlock(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
@@ -29,8 +30,8 @@ class ConvBlock(nn.Module):
 class DecoderBlock(nn.Module):
     def __init__(self, up_conv_in, out, skip_in):
         super().__init__()
-        
-        self.up = nn.ConvTranspose2d(2*up_conv_in, up_conv_in, kernel_size=2, stride=2, padding=0)
+
+        self.up = nn.ConvTranspose2d(2 * up_conv_in, up_conv_in, kernel_size=2, stride=2, padding=0)
         self.conv = ConvBlock(up_conv_in + skip_in, out)
 
     def forward(self, inputs, skip):
@@ -99,29 +100,10 @@ class ourModel(nn.Module):
         """ Decoder """
         self.decoderBlocks = []
 
-        # L4
-        # in: 1024 from bridge, 512 from skip L4
-        # out: 512
         self.decoderBlocks.append(DecoderBlock(512, 512, 512))
-
-        # L3
-        # in: 512 from L4, 256 from skip L3
-        # out: 256
         self.decoderBlocks.append(DecoderBlock(256, 256, 256))
-
-        # L2
-        # in: 256 from L3, 128 from skip L2
-        # out: 128
         self.decoderBlocks.append(DecoderBlock(128, 128, 128))
-
-        # L1
-        # in: 128 from L2, 64 from skip L1
-        # out: 64
         self.decoderBlocks.append(DecoderBlock(64, 64, 128))
-
-        # L0
-        # in: 64 from bridge, 32 from skip l1
-        # out: 32
         self.decoderBlocks.append(DecoderBlock(32, 32, 6))
 
         self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)
