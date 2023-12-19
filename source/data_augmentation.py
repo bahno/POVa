@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
+from torchvision import transforms
 
 
 def create_stripes(width: int, height: int, strip_width=10) -> Image:
@@ -75,5 +76,35 @@ def merge_all_in_folder(folder_path_in: str):
                 os.makedirs(dir_path)
 
 
+def augment_image(image: Image):
+    # Define the transformations
+    transform = transforms.Compose([
+        transforms.RandomRotation(40),
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+    ])
+
+    # Apply transformations
+    augmented_img = transform(image)
+
+    # Convert tensor back to PIL Image for visualization
+    augmented_img_pil = transforms.ToPILImage()(augmented_img)
+
+    # Display the original and augmented images
+    plt.subplot(1, 2, 1)
+    plt.title('Original Image')
+    plt.imshow(image)
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.title('Augmented Image')
+    plt.imshow(augmented_img_pil)
+    plt.axis('off')
+
+    plt.show()
+
+
 if __name__ == "__main__":
-    merge_all_in_folder("../datasets/Davis/train480p/DAVIS")
+    # merge_all_in_folder("../datasets/Davis/train480p/DAVIS")
+    augment_image(Image.open("../datasets/Davis/train480p/DAVIS/Merged/480p/bmx-bumps/00000.jpg"))
