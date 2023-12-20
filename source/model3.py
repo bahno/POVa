@@ -93,8 +93,8 @@ class BackboneEncoder(nn.Module):
 class ourModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.encoder_image = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
-        self.encoder_mask = BackboneEncoder(resnet18(weights=ResNet18_Weights.IMAGENET1K_V1))
+        self.encoder_image = BackboneEncoder(resnet34(weights=ResNet34_Weights.IMAGENET1K_V1))
+        self.encoder_mask = BackboneEncoder(resnet34(weights=ResNet34_Weights.IMAGENET1K_V1))
 
         self.bridge = Bridge(1024, 1024)
         """ Decoder """
