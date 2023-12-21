@@ -1,22 +1,25 @@
 from typing import Optional
-
+import copy
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm, trange
+from lossfunc import DiceLoss
+from utils import accuracy
 
 
 
 class Trainer:
     def __init__(
         self,
-        model: torch.nn.Module,
-        criterion: torch.nn.Module,
-        optimizer: torch.optim,
-        trainingDataloader: Dataset,
-        validatinDataloader: Optional[Dataset] = None,
-        epochs: int = 50,
-        epoch: int = 0,
+        model : torch.nn.Module,
+        criterion : torch.nn.Module,
+        optimizer : torch.optim,
+        trainingDataloader : Dataset,
+        validatinDataloader : Optional[Dataset] = None,
+        epochs : int = 50,
+        epoch : int = 0,
+        logValidation:  bool = True
     ):
         
         self.model = model
@@ -28,19 +31,29 @@ class Trainer:
         self.epoch = epoch
         self.trainingLoss = []
         self.validationLoss = []
-    
+        self.bestModel = {
+            'model' : None,
+            'loss' : None,
+            'epoch' : 0
+        }
+        self.logValidation = logValidation
+        self.valAccuracy = []
+        self.trainAccuracy = []
+        self.valDice = []
+        self.trainAccuracy = []
+
     def run(self):
         
         progressbar = trange(self.epochs, desc="Progress")
         for i in progressbar:
             self.epoch += 1 
             self._train()
-            
+        
             if self.validatinDataloader is not None:
                 self._validate()
 
 
-        return self.trainingLoss, self.validationLoss
+        return self.trainingLoss, self.validationLoss, self.bestModel
 
     def _train(self):
         self.model.train()
@@ -58,16 +71,21 @@ class Trainer:
 
             loss = self.criterion(out, gt)
             trainingLosses.append(loss.item())
+ 
+
+            
             loss.backward()
             self.optimizer.step() #update grads
 
-        self.trainingLoss.append(np.mean(trainingLosses))
 
+        self.trainingLoss.append(np.mean(trainingLosses))
         batch_iter.close()
     
     def _validate(self):
         self.model.eval()
-        validLosses = []
+        valLosses = []
+        valDice = []
+        valAccuracy = []
         batch_iter = tqdm(
             enumerate(self.validatinDataloader),
             "Validation",
@@ -75,13 +93,30 @@ class Trainer:
             leave=False,
         )        
 
-        #for i, (input, gt) in batch_iter:
+        loss = None
         for i, (prevImage, currImg, gt) in batch_iter:
             with torch.no_grad():
                 out = self.model(prevImage, currImg)
                 loss = self.criterion(out,gt)
-                validLosses.append(loss.item())
+                valLosses.append(loss.item())
+                #valAccuracy.append(accuracy(out,gt))
+                #valDice.append(DiceLoss(out,gt))
+
+        if self.logValidation:
+            if (self.bestModel['model'] == None):
+                self.bestModel['model'] = copy.deepcopy(self.model)
+                self.bestModel['loss'] = np.mean(valLosses)
+                self.bestModel['epoch'] = self.epoch
+
+            else:
+                if (np.mean(valLosses) < self.bestModel['loss']):
+                    self.bestModel['model'] = copy.deepcopy(self.model)
+                    self.bestModel['loss'] = np.mean(valLosses)
+                    self.bestModel['epoch'] = self.epoch
             
-        self.validationLoss.append(np.mean(validLosses))
+        #self.valAccuracy.append(np.mean(valAccuracy))
+        #self.valDice.append(np.mean(valDice))
+        self.validationLoss.append(np.mean(valLosses))
+        print(f"Epoch: {self.epochs}  Loss: {self.validationLoss[-1]}")
         batch_iter.close()
 

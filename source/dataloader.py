@@ -8,7 +8,16 @@ import os
 import pandas as pd
 from torchvision.io import read_image
 import numpy as np
-
+from pycocotools.coco import COCO
+from matplotlib import image
+from pathlib import Path
+from matplotlib import pyplot as plt
+from data_augmentation import blend_image_mask
+from torchvision.transforms import v2
+import random
+import torchvision.transforms.functional as TF
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class davis2017Dataset(Dataset):
     def __init__(self,
@@ -52,84 +61,114 @@ class davis2017Dataset(Dataset):
         if self.transform is not None:
             currImg = self.transform(currImg)
             prevImage = self.transform(prevImage)
-            gt = self.transform(gt)
+            gt = self.target_transform(gt)
 
-        """
-        if self.pad_mirroring:
-            img = Pad(padding=self.pad_mirroring, padding_mode="reflect")(img)"""
 
         return prevImage, currImg, gt
 
 
-"""
-class cocoDataset(Dataset):
-    def __init__(self, annotationsFile, dataDir, transform=None, target_transform=None):
-        annotations = []
-        with open(annotationsFile, 'r') as f:
-            annotations = json.load(f)
-        self.imgLabels = annotations
-        print(annotations)
 
-        #self.imgLabels = pd.read_json(annotationsFile)
-        self.dataDir = dataDir
+
+class Coco2017Dataset(Dataset):
+    def __init__(self, 
+                datasetDir = '../datasets/coco2017/train/data/', 
+                annotationsFile = '../datasets/coco2017/raw/instances_train2017.json',
+                transform = None):
+        self.datasetDir = datasetDir
+        self.annFileTrain = annotationsFile
+        self.coco = COCO(annotationsFile)
+        self.cat_ids = self.coco.getCatIds(catNms=['person'])
+        self.imgIds = self.coco.getImgIds(catIds=self.cat_ids)
         self.transform = transform
-        self.target_transform = target_transform
+     
 
     def __len__(self):
-        return len(self.imgLabels)
+        return len(self.imgIds)
+
 
     def __getitem__(self, idx):
-        img_path = os.path.join(self.dataDir, self.imgLabels.iloc[idx, 0])
-        image = read_image(img_path)
-        label = self.imgLabels.iloc[idx, 1]
-        if self.transform:
-            image = self.transform(image)
-        if self.target_transform:
-            label = self.target_transform(label)
-        return image, label
+        imgId = self.imgIds[idx]
+        imgObj = self.coco.loadImgs(imgId)[0]
+        annsObj = self.coco.loadAnns(self.coco.getAnnIds(imgId)) 
+
+        img = Image.open(os.path.join(self.datasetDir, imgObj['file_name']))
 
 
+        mask = self.coco.annToMask(ann=annsObj[0])
+        for i in range(len(annsObj)):
+            mask |= self.coco.annToMask(annsObj[i])
+        mask = mask * 255
+
+        im = Image.fromarray(mask)
+        currentImage = None
+
+        if (imgId == 86): 
+            img.show()
+        prevImage = blend_image_mask(img.convert("RGB"),im.convert("RGB"))
+        if self.transform is not None:
+            prevImage = self.transform(prevImage)
+            currentImage= self.transform(img)
+            gt = self.transform(im)
+            currentImage, gt = self.transfromFunc(currentImage, gt)
+
+        else:
+
+            currentImage, gt = self.transfromFunc(img, im)
+
+        toTensor = transforms.ToTensor()
+        tPrevImage = toTensor(prevImage)
+        tcurrentImage  = toTensor(currentImage)
+        tGt = toTensor(gt)
+        return tPrevImage, tcurrentImage, tGt
+
+    def transfromFunc(self, image, mask):
+        """width, height = image.size
+
+        angle = transforms.RandomRotation.get_params(
+                                                    degrees=(0, 359))
+
+        image = TF.rotate(image, angle)
+        mask = TF.rotate(mask, angle)
+
+        Pwidth, Pheight = transforms.RandomPerspective.get_params(
+                                                                  width, 
+                                                                  height,    
+                                                                  0.6)
+
+        image= TF.perspective(image, Pwidth, Pheight)
+        mask= TF.perspective(mask, Pwidth, Pheight)
 
 
+        degrees, translate, scale_ranges, shears = transforms.RandomAffine.get_params(  
+                                                                            degrees=(30, 70), 
+                                                                            translate=(0.1, 0.3), 
+                                                                            scale_ranges=(0.5, 0.75),
+                                                                            shears=None,
+                                                                            img_size = (width, height))
+        
+        image = TF.affine(image, degrees, translate, scale_ranges, shears)
+        mask = TF.affine(mask, degrees, translate, scale_ranges, shears)
+        """
 
+        if random.random() > 0.5:
+            image = TF.vflip(image)
+            mask = TF.vflip(mask)
 
+        if random.random() > 0.5:
+            image = TF.hflip(image)
+            mask = TF.hflip(mask)
+       
+        return image, mask
 
-
-
-
-class CocoDataset(Dataset):
-    def __init__(self, root_dir, annotation_file, transform=None, target_transform=None):
-        self.root_dir = root_dir
-        self.coco = COCO(annotation_file)
-        self.transform = transform
-        self.target_transform = target_transform
-
-    def __len__(self):
-        return len(self.coco.getImgIds())
-
-    def __getitem__(self, idx):
-        img_id = self.coco.getImgIds()[idx]
-        img_info = self.coco.loadImgs(img_id)[0]
-        img_path = f"{self.root_dir}/{img_info['file_name']}"
-        img = Image.open(img_path).convert('RGB')
-
-        ann_ids = self.coco.getAnnIds(imgIds=img_id)
-        annotations = self.coco.loadAnns(ann_ids)
-
-        # Předpokládáme, že máme binární masku pro segmentaci
-        mask = self.coco.annToMask(annotations[0])
-
-        if self.transform:
-            img = self.transform(img)
-
-        if self.target_transform:
-            mask = self.target_transform(mask)
-
-        return img, mask
-"""
 
 if __name__ == '__main__':
+    x = Coco2017Dataset()
+    for prevImage, currImg, gt in x:
+        print(2)
 
+    
+
+    """
     # Transformace pro změnu velikosti obrázku na 256x256
     transform = transforms.Compose([
         transforms.Resize(size=(256, 256)),
@@ -148,3 +187,5 @@ if __name__ == '__main__':
 
     for prevImage, currImg, gt in dataloader:
         print(prevImage)
+    """
+    

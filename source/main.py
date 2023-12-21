@@ -1,8 +1,8 @@
 # import cv2
 # import segmentation
 from matplotlib import pyplot as plt
-
-from dataloader import davis2017Dataset
+import numpy as np
+from dataloader import davis2017Dataset, Coco2017Dataset
 from torchvision import transforms
 from PIL import Image
 import torch
@@ -62,22 +62,39 @@ def test_model(model_file='model_lr-0.002_20-epochs.pth'):
     plt.show()
 
 
-def train_model(lr=0.004, epochs=20):
+def train_model(lr=0.005, epochs=40):
 
     transform = transforms.Compose([
         transforms.Resize(size=(256, 256)),
         transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                              std=[0.229, 0.224, 0.225]),
+    ]) 
+    transform2 = transforms.Compose([
+        transforms.Resize(size=(256, 256)),
+        transforms.ToTensor(),
+      
     ])
+    """transformCoco = transforms.Compose([
+        transforms.Resize(size=(256, 256)),
+    ])"""
 
     # datasets preparation
-    trainDataset = davis2017Dataset(transform=transform)
+    trainDataset = davis2017Dataset(transform=transform,target_transform=transform2)
     valDataset = davis2017Dataset(
-        # gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/',
         dataDir='../datasets/Davis/train480p/DAVIS/JPEGImages/480p/',
         annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/val.txt',
-        transform=transform)
+        transform=transform,
+        target_transform=transform2)
+    """
+    trainDataset = Coco2017Dataset(transform=transformCoco)
+    valDataset = Coco2017Dataset(
+        annotationsFile='../datasets/coco2017/raw/instances_val2017.json',
+        transform=transformCoco
+        )"""
 
-    batch_size = 4
+
+    batch_size = 8
 
     trainData = DataLoader(trainDataset, batch_size=batch_size, shuffle=True)
     valData = DataLoader(valDataset, batch_size=batch_size, shuffle=True)
@@ -96,13 +113,17 @@ def train_model(lr=0.004, epochs=20):
         epochs=epochs
     )
 
-    trainLoss, valLoss = trainer.run()
+    trainLoss, valLoss, bestModel = trainer.run()
 
-    torch.save(model.state_dict(), f"model_lr-{str(lr)}_{epochs}-epochs.pth")
+    torch.save(bestModel['model'].state_dict(), f"model_lr-{str(lr)}_{epochs}-epochs_{bestModel['loss']}_loss.pth")
+    np.save(f"model_lr-{str(lr)}_{epochs}-valLoss.npz",valLoss)
+    np.save(f"model_lr-{str(lr)}_{epochs}-trainLoss.npz",trainLoss)
 
     plotLoss(trainLoss, valLoss)
 
 
 if __name__ == '__main__':
-    train_model()
-    # test_model()
+    learningRateArray = [0.1,0.05,0.01,0.005,0.001,0.0005,0.0001]
+    for l in learningRateArray:
+        train_model(lr=l)
+    #test_model()
