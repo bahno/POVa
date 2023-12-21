@@ -119,7 +119,7 @@ def train_model(lr=0.005, epochs=40):
     np.save(f"model_lr-{str(lr)}_{epochs}-valLoss.npz",valLoss)
     np.save(f"model_lr-{str(lr)}_{epochs}-trainLoss.npz",trainLoss)
 
-    plotLoss(trainLoss, valLoss)
+    #plotLoss(trainLoss, valLoss)
 
 
 if __name__ == '__main__':

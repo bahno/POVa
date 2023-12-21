@@ -12,26 +12,51 @@ from pycocotools.coco import COCO
 from matplotlib import image
 from pathlib import Path
 from matplotlib import pyplot as plt
-from data_augmentation import blend_image_mask
 from torchvision.transforms import v2
 import random
 import torchvision.transforms.functional as TF
 from PIL import ImageFile
+from itertools import product
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class davis2017Dataset(Dataset):
     def __init__(self,
-                 # gtDir='../datasets/Davis/train480p/DAVIS/Annotations/480p/',
-                 dataDir='../datasets/Davis/train480p/DAVIS/JPEGImages/480p/',
-                 annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
-
-                 seqNum=0,
-                 transform=None,
-                 target_transform=None):
+                 dataDir : str = '../datasets/Davis/train480p/DAVIS/JPEGImages/480p/',
+                 annotationsFile : str = '../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
+                 seqNum : int = 0,
+                 transform : transforms = None,
+                 target_transform : transforms = None,
+                 train : bool = True,
+                 ):
         self.dataDir = dataDir
-        self.gtDir = dataDir.replace("JPEGImages", "Annotations")
-        self.mergedDir = dataDir.replace("JPEGImages", "Merged")
-        self.imgDirs = pd.read_csv(annotationsFile, header=None, names=["ImageDirNames"])
+       
+        self.train = train
+        fileName =  pd.read_csv(annotationsFile, header=None, names=["ImageDirNames"])
+        if (train):
+            
+            dirs = ["AugmentedJPEGImages/480p/","JPEGImages/480p/"]
+            pom = pd.concat(
+                    [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
+                                   ignore_index=True
+                                )
+            self.imgDir = pd.DataFrame(columns = ["ImageDirNames"])
+            self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
+            
+            self.gtImgDir = pd.DataFrame(columns = ["ImageDirNames"])
+            self.gtImgDir = pom['path'].replace({"AugmentedJPEGImages/480p/" : "AugmentedAnnotation/480p/", 
+                                                   "JPEGImages/480p/" : "Annotations/480p/"})
+        else:
+            dirs = ["JPEGImages/480p/"]
+            pom = pd.concat(
+                    [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
+                                   ignore_index=True
+                                )
+            self.imgDir = pd.DataFrame(columns = ["ImageDirNames"])
+            self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
+
+            self.gtImgDir = pd.DataFrame(columns = ["ImageDirNames"])
+            self.gtImgDir = pom['path'].replace({"JPEGImages/480p/" : "Annotations/480p/"})
+       
         self.transform = transform
         self.target_transform = target_transform
         self.seqNum = str(seqNum).zfill(5)
@@ -42,15 +67,15 @@ class davis2017Dataset(Dataset):
 
     def __getitem__(self, idx):
         currImg = Image.open(
-            os.path.join(self.mergedDir, self.imgDirs.at[idx, "ImageDirNames"], self.seqNum + '.jpg').replace(os.sep,
+            os.path.join(self.dataDir, self.imgDir.at[idx, "ImageDirNames"], self.seqNum + '.jpg').replace(os.sep,
                                                                                                               '/')).convert(
             "RGB")
         prevImage = Image.open(
-            os.path.join(self.dataDir, self.imgDirs.at[idx, "ImageDirNames"], self.nextSeqNum + '.jpg').replace(os.sep,
+            os.path.join(self.dataDir, self.imgDir.at[idx, "ImageDirNames"], self.nextSeqNum + '.jpg').replace(os.sep,
                                                                                                                 '/')).convert(
             "RGB")
         gt = np.array(Image.open(
-            os.path.join(self.gtDir, self.imgDirs.at[idx, "ImageDirNames"], self.nextSeqNum + '.png').replace(os.sep,
+            os.path.join(self.dataDir, self.gtImgDir.at[idx, "ImageDirNames"], self.nextSeqNum + '.png').replace(os.sep,
                                                                                                               '/')).convert(
             "L"),
                       dtype=np.float32)
@@ -162,13 +187,13 @@ class Coco2017Dataset(Dataset):
 
 
 if __name__ == '__main__':
-    x = Coco2017Dataset()
-    for prevImage, currImg, gt in x:
-        print(2)
+    #x = Coco2017Dataset()
+    #for prevImage, currImg, gt in x:
+    #    print(2)
 
     
 
-    """
+    
     # Transformace pro změnu velikosti obrázku na 256x256
     transform = transforms.Compose([
         transforms.Resize(size=(256, 256)),
@@ -187,5 +212,5 @@ if __name__ == '__main__':
 
     for prevImage, currImg, gt in dataloader:
         print(prevImage)
-    """
+
     
