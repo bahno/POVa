@@ -74,9 +74,9 @@ class DataAugmenter:
 
         self.stripes = None
         self.prev_merged = None
-        self.prev_img = None
-        self.prev_mask = None
-        self.curr_img = None
+        self.prev_img: Image = None
+        self.prev_mask: Image = None
+        self.curr_img: Image = None
 
     def set_prev_images(self, prev_image, prev_mask):
         self.prev_img = prev_image
@@ -158,6 +158,7 @@ def process_directory(directory, data_augmenter=None):
             # check if folder for newly created files exists
             new_image_path = full_path.replace("JPEGImages", "AugmentedJPEGImages")
             new_merge_path = full_path.replace("JPEGImages", "AugmentedMerged")
+            new_annot_path = full_path.replace("JPEGImages", "AugmentedAnnotations").replace("jpg", "png")
 
             if not os.path.exists(os.path.dirname(new_image_path)):
                 os.makedirs(os.path.dirname(new_image_path))
@@ -165,21 +166,35 @@ def process_directory(directory, data_augmenter=None):
             if not os.path.exists(os.path.dirname(new_merge_path)):
                 os.makedirs(os.path.dirname(new_merge_path))
 
+            if not os.path.exists(os.path.dirname(new_annot_path)):
+                os.makedirs(os.path.dirname(new_annot_path))
+
             # augment image
             image = transforms.ToTensor()(Image.open(full_path))
             annotation_image = transforms.ToTensor()(
                 Image.open(full_path.replace("JPEGImages", "Annotations").replace("jpg", "png")))
 
-            transformed_image, transformed_annotation_image = data_augmenter.distorter.transform_image_and_mask(image,
-                                                                                                                annotation_image)
+            transformed_image, transformed_annotation_image = (
+                data_augmenter.distorter.transform_image_and_mask(
+                    image,
+                    annotation_image
+                )
+            )
 
             # save image to the new folder with the same name
-            data_augmenter.set_prev_images(transforms.ToPILImage()(transformed_image),
-                                           transforms.ToPILImage()(transformed_annotation_image))
+            data_augmenter.set_prev_images(
+                transforms.ToPILImage()(transformed_image),
+                transforms.ToPILImage()(transformed_annotation_image))
+
             data_augmenter.merge_image_and_mask()
 
             data_augmenter.prev_merged.save(new_merge_path)
             data_augmenter.prev_img.save(new_image_path)
+
+            binary_array = np.array(data_augmenter.prev_mask)
+            binary_array = (binary_array > 0).astype(np.uint8) * 255
+            binary_image = Image.fromarray(binary_array)
+            binary_image.save(new_annot_path, format="PNG")
 
         elif os.path.isdir(full_path):
             # Process directory
