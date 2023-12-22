@@ -21,7 +21,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class davis2017Dataset(Dataset):
     def __init__(self,
-                 dataDir : str = '../datasets/Davis/train480p/DAVIS/JPEGImages/480p/',
+                 dataDir : str = '../datasets/Davis/train480p/DAVIS/',
                  annotationsFile : str = '../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
                  seqNum : int = 0,
                  transform : transforms = None,
@@ -31,6 +31,7 @@ class davis2017Dataset(Dataset):
         self.dataDir = dataDir
        
         self.train = train
+        data = {'ImageDirNames': []}
         fileName =  pd.read_csv(annotationsFile, header=None, names=["ImageDirNames"])
         if (train):
             
@@ -39,33 +40,40 @@ class davis2017Dataset(Dataset):
                     [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
                                    ignore_index=True
                                 )
-            self.imgDir = pd.DataFrame(columns = ["ImageDirNames"])
+         
+            self.imgDir = pd.DataFrame(data)
+            dirs = ["AugmentedAnnotations/480p/", "Annotations/480p/"]
             self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
             
-            self.gtImgDir = pd.DataFrame(columns = ["ImageDirNames"])
-            self.gtImgDir = pom['path'].replace({"AugmentedJPEGImages/480p/" : "AugmentedAnnotation/480p/", 
-                                                   "JPEGImages/480p/" : "Annotations/480p/"})
+    
+            self.gtImgDir = pd.DataFrame(data)
+            self.gtImgDir["ImageDirNames"] = pom['path'].replace({"AugmentedJPEGImages/480p/" : "AugmentedAnnotations/480p/", 
+                                                   "JPEGImages/480p/" : "Annotations/480p/"}) + pom['ImageDirNames']
+
+            
         else:
             dirs = ["JPEGImages/480p/"]
             pom = pd.concat(
                     [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
                                    ignore_index=True
                                 )
-            self.imgDir = pd.DataFrame(columns = ["ImageDirNames"])
+            self.imgDir = pd.DataFrame(data)
             self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
 
-            self.gtImgDir = pd.DataFrame(columns = ["ImageDirNames"])
-            self.gtImgDir = pom['path'].replace({"JPEGImages/480p/" : "Annotations/480p/"})
+            self.gtImgDir = pd.DataFrame(data)
+            self.gtImgDir = pom['path'].replace({"JPEGImages/480p/" : "Annotations/480p/"}) + pom['ImageDirNames']
        
         self.transform = transform
         self.target_transform = target_transform
         self.seqNum = str(seqNum).zfill(5)
         self.nextSeqNum = str(seqNum + 1).zfill(5)
+         
 
     def __len__(self):
-        return len(self.imgDirs)
+        return len(self.imgDir)
 
     def __getitem__(self, idx):
+
         currImg = Image.open(
             os.path.join(self.dataDir, self.imgDir.at[idx, "ImageDirNames"], self.seqNum + '.jpg').replace(os.sep,
                                                                                                               '/')).convert(

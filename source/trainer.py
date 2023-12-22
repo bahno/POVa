@@ -114,8 +114,7 @@ class Trainer:
                     self.bestModel['loss'] = np.mean(valLosses)
                     self.bestModel['epoch'] = self.epoch
             
-        #self.valAccuracy.append(np.mean(valAccuracy))
-        #self.valDice.append(np.mean(valDice))
+
         self.validationLoss.append(np.mean(valLosses))
         print(f"Epoch: {self.epochs}  Loss: {self.validationLoss[-1]}")
         batch_iter.close()

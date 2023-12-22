@@ -82,7 +82,7 @@ def train_model(lr=0.005, epochs=40):
     # datasets preparation
     trainDataset = davis2017Dataset(transform=transform,target_transform=transform2)
     valDataset = davis2017Dataset(
-        dataDir='../datasets/Davis/train480p/DAVIS/JPEGImages/480p/',
+        dataDir='../datasets/Davis/train480p/DAVIS/',
         annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/val.txt',
         transform=transform,
         target_transform=transform2)
