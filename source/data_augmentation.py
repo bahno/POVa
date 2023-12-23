@@ -129,7 +129,7 @@ def merge_all_in_folder(folder_path_in: str):
             image_path = file_path
 
             data_augmenter = DataAugmenter()
-            data_augmenter.set_prev_images(image_path, mask_path)
+            data_augmenter.set_prev_images(Image.open(image_path), Image.open(mask_path))
 
             data_augmenter.merge_image_and_mask()
             merged_path = file_path.replace("JPEGImages", "Merged")
@@ -198,5 +198,5 @@ def process_directory(directory, data_augmenter=None):
 
 
 if __name__ == "__main__":
-    process_directory("../datasets/Davis/train480p/DAVIS/JPEGImages/480p", DataAugmenter())
-    # merge_all_in_folder("../datasets/Davis/train480p/DAVIS")
+    # process_directory("../datasets/Davis/train480p/DAVIS/JPEGImages/480p", DataAugmenter())
+    merge_all_in_folder("../datasets/Davis/test480p/DAVIS")
