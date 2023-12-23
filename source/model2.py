@@ -1,11 +1,5 @@
 from torch import nn
-from torchvision.transforms import CenterCrop, Compose, ToTensor, Resize
-from torch.nn import functional as F
 import torch
-import torch.optim as optim
-from dataloader import davis2017Dataset
-from torch.utils.data import DataLoader
-
 
 class conv_block(nn.Module):
     def __init__(self, in_c, out_c):

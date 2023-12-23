@@ -2,8 +2,6 @@ from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet15
 import torch.nn as nn
 import segmentation_models_pytorch as smp
 from torch import cat
-from segmentation_models_pytorch.encoders import get_preprocessing_fn
-from torchsummary import summary
 
 verb = False
 

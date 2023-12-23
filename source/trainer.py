@@ -4,9 +4,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm, trange
-from lossfunc import DiceLoss
-from utils import accuracy
-
 
 
 class Trainer:

@@ -1,8 +1,6 @@
-import fiftyone as fo
 import fiftyone.zoo as foz
 import requests
 import os
-from pathlib import Path
 from zipfile import ZipFile
 
 DavisDatasetUrls = {

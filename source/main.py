@@ -175,7 +175,7 @@ def train_model_vgg(lr=0.005, epochs=20):
 
 
 if __name__ == '__main__':
-    learningRateArray = [0.003, 0.005]
+    learningRateArray = [0.5,0.1,0.05,0.01,0.005,0.001,0.0005,0.0001]
     for l in learningRateArray:
-       train_model_vgg(lr=l)  
+        train_model(lr=l)
     #test_model()

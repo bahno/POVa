@@ -1,23 +1,13 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-# from pycocotools.coco import COCO
 from PIL import Image
-import json
 import os
 import pandas as pd
-from torchvision.io import read_image
 import numpy as np
 from pycocotools.coco import COCO
-from matplotlib import image
-from pathlib import Path
-from matplotlib import pyplot as plt
-from torchvision.transforms import v2
 import random
 import torchvision.transforms.functional as TF
-from PIL import ImageFile
-from itertools import product
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class davis2017Dataset(Dataset):
     def __init__(self,
@@ -42,16 +32,52 @@ class davis2017Dataset(Dataset):
                                 )
          
             self.imgDir = pd.DataFrame(data)
+           
+            self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
+            
+
+            self.imgDirMerge = pd.DataFrame(data)
+            dirs = ["AugmentedMerged/480p/", "Merged/480p/"]
+            pom = pd.concat(
+                    [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
+                                   ignore_index=True
+                                )
+            self.imgDirMerge["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
+            
+
+
             dirs = ["AugmentedAnnotations/480p/", "Annotations/480p/"]
+            pom = pd.concat(
+                    [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
+                                   ignore_index=True
+                                )
+            self.gtImgDir = pd.DataFrame(data)
+            self.gtImgDir["ImageDirNames"] =  pom['path'] + pom['ImageDirNames']
+            
+            #pom['path'].replace({"AugmentedJPEGImages/480p/" : "AugmentedAnnotations/480p/", 
+            #                                       "MergedImages/480p/" : "Annotations/480p/"}) + pom['ImageDirNames']
+
+            
+        else:
+            dirs = ["JPEGImages/480p/"]
+            pom = pd.concat(
+                    [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
+                                   ignore_index=True
+                                )
+         
+            self.imgDir = pd.DataFrame(data)
+            dirs = [ "Annotations/480p/"]
             self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
             
     
             self.gtImgDir = pd.DataFrame(data)
-            self.gtImgDir["ImageDirNames"] = pom['path'].replace({"AugmentedJPEGImages/480p/" : "AugmentedAnnotations/480p/", 
+            self.gtImgDir["ImageDirNames"] = pom['path'].replace({ 
                                                    "JPEGImages/480p/" : "Annotations/480p/"}) + pom['ImageDirNames']
 
-            
-        else:
+
+
+
+            """
             dirs = ["JPEGImages/480p/"]
             pom = pd.concat(
                     [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
@@ -61,8 +87,9 @@ class davis2017Dataset(Dataset):
             self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
 
             self.gtImgDir = pd.DataFrame(data)
-            self.gtImgDir = pom['path'].replace({"JPEGImages/480p/" : "Annotations/480p/"}) + pom['ImageDirNames']
-       
+            self.gtImgDir = pom['path'].replace({"JPEGImages/480p/" : "Annotations/480p/"}) + pom['ImageDirNames']"""
+            print(self.gtImgDir)
+
         self.transform = transform
         self.target_transform = target_transform
         self.seqNum = str(seqNum).zfill(5)
@@ -73,13 +100,12 @@ class davis2017Dataset(Dataset):
         return len(self.imgDir)
 
     def __getitem__(self, idx):
-
         currImg = Image.open(
             os.path.join(self.dataDir, self.imgDir.at[idx, "ImageDirNames"], self.seqNum + '.jpg').replace(os.sep,
                                                                                                               '/')).convert(
             "RGB")
         prevImage = Image.open(
-            os.path.join(self.dataDir, self.imgDir.at[idx, "ImageDirNames"], self.nextSeqNum + '.jpg').replace(os.sep,
+            os.path.join(self.dataDir, self.imgDirMerge.at[idx, "ImageDirNames"], self.nextSeqNum + '.jpg').replace(os.sep,
                                                                                                                 '/')).convert(
             "RGB")
         gt = np.array(Image.open(

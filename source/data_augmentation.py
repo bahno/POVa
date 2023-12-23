@@ -1,15 +1,10 @@
 import posixpath
 import random
-import struct
-from typing import Tuple
-
-import cv2
 import os
 import re
 import sys
 import numpy as np
 from PIL import Image, ImageDraw
-import matplotlib.pyplot as plt
 from torchvision import transforms
 from torchvision.transforms import RandomHorizontalFlip, RandomRotation, RandomPerspective, CenterCrop, ColorJitter, \
     Compose, GaussianBlur, RandomGrayscale
