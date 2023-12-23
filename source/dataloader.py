@@ -76,20 +76,6 @@ class davis2017Dataset(Dataset):
 
 
 
-
-            """
-            dirs = ["JPEGImages/480p/"]
-            pom = pd.concat(
-                    [pd.DataFrame({'path': [path] * len(fileName), 'ImageDirNames': fileName['ImageDirNames']}) for path in dirs], 
-                                   ignore_index=True
-                                )
-            self.imgDir = pd.DataFrame(data)
-            self.imgDir["ImageDirNames"] = pom['path'] + pom['ImageDirNames']
-
-            self.gtImgDir = pd.DataFrame(data)
-            self.gtImgDir = pom['path'].replace({"JPEGImages/480p/" : "Annotations/480p/"}) + pom['ImageDirNames']"""
-            print(self.gtImgDir)
-
         self.transform = transform
         self.target_transform = target_transform
         self.seqNum = str(seqNum).zfill(5)
