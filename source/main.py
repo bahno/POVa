@@ -17,10 +17,11 @@ import pickle
 from utils import plotLoss
 from model3 import ourModel
 from model4 import UNetWithResnet50Encoder
+from modelvgg import UNet_vgg
 
 
-def test_model(model_file='model_lr-0.002_20-epochs.pth'):
-    loaded_model = ourModel()
+def test_model(model_file='model_lr-0.003_20-epochs_0.38_loss.pth'):
+    loaded_model = UNet_vgg()
     loaded_model.load_state_dict(torch.load(model_file))
     loaded_model.eval()
 
@@ -42,7 +43,6 @@ def test_model(model_file='model_lr-0.002_20-epochs.pth'):
     mask_tensor_uns = mask_tensor.unsqueeze(0)
 
     res = loaded_model.forward(img_tensor_uns, mask_tensor_uns)
-
     res_thresh = torch.threshold(res, -1.5, 1)
 
     # Convert the PyTorch tensor to a NumPy array
@@ -119,11 +119,63 @@ def train_model(lr=0.005, epochs=40):
     np.save(f"model_lr-{str(lr)}_{epochs}-valLoss.npz",valLoss)
     np.save(f"model_lr-{str(lr)}_{epochs}-trainLoss.npz",trainLoss)
 
-    #plotLoss(trainLoss, valLoss)
+    plotLoss(trainLoss, valLoss)
+
+
+
+
+def train_model_vgg(lr=0.005, epochs=20):
+    transform = transforms.Compose([
+        transforms.Resize(size=(256, 256)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                              std=[0.229, 0.224, 0.225]),
+    ]) 
+    transform2 = transforms.Compose([
+        transforms.Resize(size=(256, 256)),
+        transforms.ToTensor(),
+      
+    ])
+
+    # datasets preparation
+    trainDataset = davis2017Dataset(transform=transform,target_transform=transform2)
+    valDataset = davis2017Dataset(
+        dataDir='../datasets/Davis/train480p/DAVIS/',
+        annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/val.txt',
+        transform=transform,
+        target_transform=transform2)
+
+    batch_size = 8
+
+    trainData = DataLoader(trainDataset, batch_size=batch_size, shuffle=True)
+    valData = DataLoader(valDataset, batch_size=batch_size, shuffle=True)
+
+    # model
+    model = UNet_vgg()
+
+    criterion = nn.BCEWithLogitsLoss()  # DiceLoss()
+
+    trainer = Trainer(
+        model=model,
+        optimizer=Adam(model.parameters(), lr=lr),
+        trainingDataloader=trainData,
+        validatinDataloader=valData,
+        criterion=criterion,
+        epochs=epochs
+    )
+
+    trainLoss, valLoss, bestModel = trainer.run()
+
+    torch.save(bestModel['model'].state_dict(), f"model_lr-{str(lr)}_{epochs}-epochs_{bestModel['loss']}_loss.pth")
+    np.save(f"model_lr-{str(lr)}_{epochs}-valLoss.npz",valLoss)
+    np.save(f"model_lr-{str(lr)}_{epochs}-trainLoss.npz",trainLoss)
+
+    plotLoss(trainLoss, valLoss)
+
 
 
 if __name__ == '__main__':
-    learningRateArray = [0.1,0.05,0.01,0.005,0.001,0.0005,0.0001]
+    learningRateArray = [0.003, 0.005]
     for l in learningRateArray:
-        train_model(lr=l)
+       train_model_vgg(lr=l)  
     #test_model()
