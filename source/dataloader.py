@@ -28,6 +28,7 @@ class davis2017Datasetv2(Dataset):
                  annotationsFile: str = '../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
                  transform: transforms = None,
                  target_transform: transforms = None,
+                 train : bool = True
                  ):
         self.dataDir = dataDir
         fileName = pd.read_csv(annotationsFile, header=None, names=["ImageDirNames"])
@@ -36,7 +37,10 @@ class davis2017Datasetv2(Dataset):
         self.CurrImages = []
         self.MasksImages = []
         self.PrevImages = []
-        self.allSeqFromDirectory(dataDir, fileName['ImageDirNames'])
+        if train:
+            self.allSeqFromDirectoryTrain(dataDir, fileName['ImageDirNames'])
+        else:
+            self.allSeqFromDirectoryVal(dataDir, fileName['ImageDirNames'])
 
 
     def __len__(self):
@@ -67,7 +71,7 @@ class davis2017Datasetv2(Dataset):
 
         return prevImage, currImg, gt
     
-    def allSeqFromDirectory(self, path, names):
+    def allSeqFromDirectoryTrain(self, path, names):
         
         for n in names: 
             NumberofFrame = len(os.listdir(path + 'JPEGImages/480p/' + n))
@@ -83,7 +87,19 @@ class davis2017Datasetv2(Dataset):
             self.CurrImages  += AnnotationsCurr + AnnotationsCurrAugmented
             self.PrevImages += AnnotationsMergedAugment + AnnotationsMerged
             self.MasksImages += AnnotationsMasks + AnnotationsMasksAugment
-        
+
+    def allSeqFromDirectoryVal(self, path, names):
+        for n in names: 
+            NumberofFrame = len(os.listdir(path + 'JPEGImages/480p/' + n))
+
+            AnnotationsCurr = [path + 'JPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1, NumberofFrame)]
+            AnnotationsMerged = [path + 'Merged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range( NumberofFrame - 1)]
+            AnnotationsMasks = [path + 'Annotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(1, NumberofFrame)]
+
+            self.CurrImages  += AnnotationsCurr
+            self.PrevImages += AnnotationsMerged
+            self.MasksImages += AnnotationsMasks
+    
         
 
 
