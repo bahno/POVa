@@ -2,7 +2,7 @@
 # import segmentation
 from matplotlib import pyplot as plt
 import numpy as np
-from dataloader import davis2017Dataset, Coco2017Dataset
+from dataloader import davis2017Dataset, Coco2017Dataset, davis2017Datasetv2
 from torchvision import transforms
 from PIL import Image
 import torch
@@ -80,7 +80,7 @@ def train_model(lr=0.005, epochs=40):
     ])"""
 
     # datasets preparation
-    trainDataset = davis2017Dataset(transform=transform,target_transform=transform2)
+    trainDataset = davis2017Datasetv2(transform=transform,target_transform=transform2)
     valDataset = davis2017Dataset(
         dataDir='../datasets/Davis/train480p/DAVIS/',
         annotationsFile='../datasets/Davis/train480p/DAVIS/ImageSets/2017/val.txt',
@@ -94,7 +94,7 @@ def train_model(lr=0.005, epochs=40):
         )"""
 
 
-    batch_size = 8
+    batch_size = 16
 
     trainData = DataLoader(trainDataset, batch_size=batch_size, shuffle=True)
     valData = DataLoader(valDataset, batch_size=batch_size, shuffle=True)

@@ -21,6 +21,95 @@ from itertools import product
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
+
+class davis2017Datasetv2(Dataset):
+    def __init__(self,
+                 dataDir: str = '../datasets/Davis/train480p/DAVIS/',
+                 annotationsFile: str = '../datasets/Davis/train480p/DAVIS/ImageSets/2017/train.txt',
+                 transform: transforms = None,
+                 target_transform: transforms = None,
+                 ):
+        self.dataDir = dataDir
+        fileName = pd.read_csv(annotationsFile, header=None, names=["ImageDirNames"])
+        self.transform = transform
+        self.target_transform = target_transform
+        self.CurrImages = []
+        self.MasksImages = []
+        self.PrevImages = []
+        self.allSeqFromDirectory(dataDir, fileName['ImageDirNames'])
+
+
+    def __len__(self):
+        return len(self.CurrImages)
+
+    def __getitem__(self, idx):
+        currImg = Image.open(self.CurrImages[idx].replace(os.sep,
+                                                                                                           '/')).convert(
+            "RGB")
+        prevImage = Image.open(
+            os.path.join(self.PrevImages[idx]).replace(
+                os.sep,
+                '/')).convert(
+            "RGB")
+        gt = np.array(Image.open(
+            os.path.join(self.MasksImages[idx]).replace(os.sep,
+                                                                                                                 '/')).convert(
+            "L"),
+            dtype=np.float32)
+
+        gt = ((gt / np.max([gt.max(), 1e-8])) > 0.5).astype(np.float32)
+
+        gt = Image.fromarray(np.uint8((gt) * 255))
+        if self.transform is not None:
+            currImg = self.transform(currImg)
+            prevImage = self.transform(prevImage)
+            gt = self.target_transform(gt)
+
+        return prevImage, currImg, gt
+    
+    def allSeqFromDirectory(self, path, names):
+        
+        for n in names: 
+            NumberofFrame = len(os.listdir(path + 'JPEGImages/480p/' + n))
+
+            AnnotationsCurr = [path + 'JPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1, NumberofFrame)]
+            AnnotationsCurrAugmented = [path + 'AugmentedJPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1, NumberofFrame)]
+
+            AnnotationsMerged = [path + 'Merged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range( NumberofFrame - 1)]
+            AnnotationsMergedAugment = [path + 'AugmentedMerged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range( NumberofFrame - 1)]
+            AnnotationsMasks = [path + 'Annotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(1, NumberofFrame)]
+            AnnotationsMasksAugment = [path + 'AugmentedAnnotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(1, NumberofFrame)]
+
+            self.CurrImages  += AnnotationsCurr + AnnotationsCurrAugmented
+            self.PrevImages += AnnotationsMergedAugment + AnnotationsMerged
+            self.MasksImages += AnnotationsMasks + AnnotationsMasksAugment
+        
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class davis2017Dataset(Dataset):
     def __init__(self,
                  dataDir: str = '../datasets/Davis/train480p/DAVIS/',
@@ -240,9 +329,11 @@ if __name__ == '__main__':
         transforms.ToTensor(),
     ])
 
-    dataset = davis2017Dataset(transform=transform, target_transform=target_transform)
+    dataset = davis2017Datasetv2(transform=transform, target_transform=target_transform)
     batch_size = 8
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     for prevImage, currImg, gt in dataloader:
+        
         print(prevImage)
+        break
