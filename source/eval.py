@@ -18,10 +18,10 @@ class DavisEvalDataloader(Dataset):
         self.pathMerged = path + 'Merged/480p/' + FolderName
         self.transform = transform
         self.NumberofFrame = len(os.listdir(self.pathAnnotations))
-        self.AnnotationsCurr = [str(file).zfill(5) + '.jpg' for file in range(1, self.NumberofFrame)]
-        self.AnnotationsMerged = [str(file).zfill(5) + '.jpg' for file in range(self.NumberofFrame - 1)]
+        self.AnnotationsCurr = [str(file).zfill(5) + '.jpg' for file in range(2, self.NumberofFrame)]
+        self.AnnotationsMerged = [str(file).zfill(5) + '.jpg' for file in range(1,self.NumberofFrame - 1)]
 
-        self.AnnotationsMasks = [str(file).zfill(5) + '.png' for file in range(1, self.NumberofFrame)]
+        self.AnnotationsMasks = [str(file).zfill(5) + '.png' for file in range(2, self.NumberofFrame)]
 
     def __len__(self):
         len(self.files)
@@ -120,3 +120,5 @@ class evaluation:
             self.statsFrame = self.statsFrame.append(FileName, np.mean(f1ScoreArray), np.mean(jaccardArray))
 
         return self.statsFrame["f1Score"].mean(), self.statsFrame["Jaccard"].mean()
+    
+

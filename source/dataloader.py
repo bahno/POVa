@@ -76,13 +76,13 @@ class davis2017Datasetv2(Dataset):
         for n in names: 
             NumberofFrame = len(os.listdir(path + 'JPEGImages/480p/' + n))
 
-            AnnotationsCurr = [path + 'JPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1, NumberofFrame)]
-            AnnotationsCurrAugmented = [path + 'AugmentedJPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1, NumberofFrame)]
+            AnnotationsCurr = [path + 'JPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(2, NumberofFrame)]
+            AnnotationsCurrAugmented = [path + 'AugmentedJPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(2, NumberofFrame)]
 
-            AnnotationsMerged = [path + 'Merged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range( NumberofFrame - 1)]
-            AnnotationsMergedAugment = [path + 'AugmentedMerged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range( NumberofFrame - 1)]
-            AnnotationsMasks = [path + 'Annotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(1, NumberofFrame)]
-            AnnotationsMasksAugment = [path + 'AugmentedAnnotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(1, NumberofFrame)]
+            AnnotationsMerged = [path + 'Merged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1,NumberofFrame - 1)]
+            AnnotationsMergedAugment = [path + 'AugmentedMerged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1,NumberofFrame - 1)]
+            AnnotationsMasks = [path + 'Annotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(2, NumberofFrame)]
+            AnnotationsMasksAugment = [path + 'AugmentedAnnotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(2, NumberofFrame)]
 
             self.CurrImages  += AnnotationsCurr + AnnotationsCurrAugmented
             self.PrevImages += AnnotationsMergedAugment + AnnotationsMerged
@@ -92,9 +92,9 @@ class davis2017Datasetv2(Dataset):
         for n in names: 
             NumberofFrame = len(os.listdir(path + 'JPEGImages/480p/' + n))
 
-            AnnotationsCurr = [path + 'JPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1, NumberofFrame)]
-            AnnotationsMerged = [path + 'Merged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range( NumberofFrame - 1)]
-            AnnotationsMasks = [path + 'Annotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(1, NumberofFrame)]
+            AnnotationsCurr = [path + 'JPEGImages/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(2, NumberofFrame)]
+            AnnotationsMerged = [path + 'Merged/480p/' + n + '/' + str(file).zfill(5) + '.jpg' for file in range(1,NumberofFrame - 1)]
+            AnnotationsMasks = [path + 'Annotations/480p/' + n + '/' + str(file).zfill(5) + '.png' for file in range(2, NumberofFrame)]
 
             self.CurrImages  += AnnotationsCurr
             self.PrevImages += AnnotationsMerged
