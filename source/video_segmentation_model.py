@@ -1,7 +1,7 @@
 from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152, ResNet18_Weights, ResNet34_Weights
 import torch.nn as nn
 import segmentation_models_pytorch as smp
-from torch import cat
+from torch import cat, Tensor
 
 verb = False
 
@@ -32,7 +32,7 @@ class DecoderBlock(nn.Module):
         self.up = nn.ConvTranspose2d(2 * up_conv_in, up_conv_in, kernel_size=2, stride=2, padding=0)
         self.conv = ConvBlock(up_conv_in + skip_in, out)
 
-    def forward(self, inputs, skip):
+    def forward(self, inputs: Tensor, skip: Tensor) -> Tensor:
         if verb: print(f"     input:          {inputs.shape}")
         x = self.up(inputs)
         if verb:
@@ -53,7 +53,7 @@ class Bridge(nn.Module):
             ConvBlock(out_channels, out_channels)
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.bridge(x)
 
 
@@ -71,7 +71,7 @@ class BackboneEncoder(nn.Module):
                 downSampleBlocks.append(bottleneck)
         self.downSampleBlocks = nn.ModuleList(downSampleBlocks)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> (Tensor, dict):
         skip_data = dict()
         skip_data[f"layer_0"] = x
         x = self.inputBlock(x)
@@ -106,7 +106,7 @@ class ourModel(nn.Module):
 
         self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)
 
-    def forward(self, x1, x2):
+    def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         """
         x1 -- frame with mask
         x2 -- frame
