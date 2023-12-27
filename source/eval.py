@@ -1,6 +1,9 @@
+import PIL
+from matplotlib import pyplot as plt
 from sklearn.metrics import precision_recall_fscore_support as score, precision_score, recall_score, f1_score
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import pandas as pd
@@ -8,25 +11,29 @@ from PIL import Image
 import torch
 import os
 
+from torchvision.transforms import transforms
+
 from data_augmentation import DataAugmenter
+from source.model3 import ourModel
 
 
 class DavisEvalDataloader(Dataset):
-    def __init__(self, path, FolderName, transform=None):
+    def __init__(self, path, FolderName, transform=None, target_transform=None):
         self.pathAnnotations = path + 'Annotations/480p/' + FolderName
         self.pathImages = path + 'JPEGImages/480p/' + FolderName
         self.pathMerged = path + 'Merged/480p/' + FolderName
         self.transform = transform
+        self.target_transform = target_transform
         self.NumberofFrame = len(os.listdir(self.pathAnnotations))
         self.AnnotationsCurr = [str(file).zfill(5) + '.jpg' for file in range(2, self.NumberofFrame)]
-        self.AnnotationsMerged = [str(file).zfill(5) + '.jpg' for file in range(1,self.NumberofFrame - 1)]
+        self.AnnotationsMerged = [str(file).zfill(5) + '.jpg' for file in range(1, self.NumberofFrame - 1)]
 
         self.AnnotationsMasks = [str(file).zfill(5) + '.png' for file in range(2, self.NumberofFrame)]
 
     def __len__(self):
         len(self.files)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> (Tensor, Tensor, Tensor):
         currImg = Image.open(
             os.path.join(self.pathImages, self.AnnotationsCurr[idx]).replace(os.sep,
                                                                              '/')).convert(
@@ -44,6 +51,7 @@ class DavisEvalDataloader(Dataset):
         gt = ((gt / np.max([gt.max(), 1e-8])) > 0.5).astype(np.float32)
 
         gt = Image.fromarray(np.uint8(gt * 255))
+
         if self.transform is not None:
             currImg = self.transform(currImg)
             prevImage = self.transform(prevImage)
@@ -53,9 +61,9 @@ class DavisEvalDataloader(Dataset):
 
 
 class evaluation:
-    def __init__(self, model: nn.Module = None, dataloader: Dataset = None):
-        self.model = model
-        self.dataloader = dataloader
+    def __init__(self, model: ourModel = None, dataset: Dataset = None):
+        self.model: ourModel = model
+        self.dataset = dataset
         self.statsFrame = pd.DataFrame({'FileName': [], 'f1Score': [], 'Jaccard': []})
 
     @staticmethod
@@ -72,9 +80,23 @@ class evaluation:
 
     @staticmethod
     def _compute_jaccard_similarity_score(y, pred):
-        return len(set(y).intersection(set(pred))) / float(len(set(y).union(set(pred))))
+        y_flat = y.flatten()
+        pred_flat = pred.flatten()
+        return len(set(y_flat).intersection(set(pred_flat))) / float(len(set(y_flat).union(set(pred_flat))))
 
     def evalDavis(self):
+        custom_transforms = transforms.Compose([
+            transforms.Resize(size=(256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225]),
+        ])
+
+        target_transform = transforms.Compose([
+            transforms.Resize(size=(256, 256)),
+            transforms.ToTensor(),
+
+        ])
 
         path = "../datasets/Davis/train480p/DAVIS/"
         AnnotationsFile = pd.read_csv(
@@ -82,43 +104,59 @@ class evaluation:
             header=None,
             names=["ImageDirNames"])
 
-        for idx in range(0, len(AnnotationsFile)):
+        for idx in range(len(AnnotationsFile)):
             FileName = AnnotationsFile.at[idx, "ImageDirNames"]
-            DavisDataloader = DavisEvalDataloader(path, FileName)
+            DavisDataloader = DavisEvalDataloader(path, FileName, transform=custom_transforms,
+                                                  target_transform=target_transform)
             jaccardArray = []
             f1ScoreArray = []
-            firstIteration = 1
-            merged_current = None
+            firstIteration = True
             data_augmenter = DataAugmenter()
+
             for prevImage, current, mask in DavisDataloader:
-                if firstIteration == 1:
-                    firstIteration = 0
+                if firstIteration:
+                    firstIteration = False
                     with torch.no_grad():
-                        out = self.model.forward(prevImage, current)
+                        out = self.model.forward(
+                            prevImage.unsqueeze(0),
+                            current.unsqueeze(0)
+                        )
 
                         # TODO hodnota thresholdu je nyní nastavena na -1.5,
                         #  je potřeba zjistit, jaký threshold je nejlepší
-                        out_threshold = torch.threshold(out, -1.5, 1)
-                        jaccardArray.append(self._compute_jaccard_similarity_score(out_threshold, mask))
-                        f1ScoreArray.append(self._f1Score(out_threshold, mask))
+                        out_threshold = torch.where(out > -1.5, 0.0, 1.0)
+                        plt.imshow(out_threshold.squeeze(), cmap='viridis', interpolation='nearest')
+                        plt.colorbar()
+                        plt.show()
+
+                        plt.imshow(mask.squeeze(), cmap='viridis', interpolation='nearest')
+                        plt.colorbar()
+                        plt.show()
+                        jaccardArray.append(self._compute_jaccard_similarity_score(out_threshold.squeeze(), mask.squeeze()))
+                        # f1ScoreArray.append(self._f1Score(out_threshold.squeeze(0), mask))
                 else:
                     with torch.no_grad():
-                        if merged_current is None:
+                        if data_augmenter.prev_merged is None:
                             print("merged_current is None")
-                        out = self.model(merged_current, current)
+                        out = self.model.forward(
+                            transforms.ToTensor()(data_augmenter.prev_merged).unsqueeze(0),
+                            current.unsqueeze(0)
+                        )
                         # TODO hodnota thresholdu je nyní nastavena na -1.5,
                         #  je potřeba zjistit, jaký threshold je nejlepší
 
-                        out_threshold = torch.threshold(out, -1.5, 1)
-                        jaccardArray.append(self._compute_jaccard_similarity_score(out_threshold, mask))
-                        f1ScoreArray.append(self._f1Score(out_threshold, mask))
+                        out_threshold = torch.where(out > -1.5, 1.0, 0.0)
+                        jaccardArray.append(self._compute_jaccard_similarity_score(out_threshold.squeeze(), mask.squeeze()))
+                        # f1ScoreArray.append(self._f1Score(out_threshold, mask))
 
-                # TODO z out masky vytvořit a obrázku vytvořit merged obrázek
-                data_augmenter.set_prev_images(out_threshold, current)
-                merged_current = data_augmenter.merge_image_and_mask()
+                data_augmenter.set_prev_images(
+                    transforms.ToPILImage()(current),
+                    transforms.ToPILImage()(out_threshold[0]))
+                data_augmenter.merge_image_and_mask()
 
-            self.statsFrame = self.statsFrame.append(FileName, np.mean(f1ScoreArray), np.mean(jaccardArray))
+            # new_row = {'FileName': FileName, 'f1Score': np.mean(f1ScoreArray), 'Jaccard': np.mean(jaccardArray)}
+            new_row = {'FileName': FileName, 'f1Score': 0, 'Jaccard': np.mean(jaccardArray)}
+            print(f"idx: {idx}\ndata: {new_row}")
+            self.statsFrame = self.statsFrame._append(new_row, ignore_index=True)
 
         return self.statsFrame["f1Score"].mean(), self.statsFrame["Jaccard"].mean()
-    
-
