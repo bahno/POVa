@@ -2,23 +2,18 @@
 # import segmentation
 from matplotlib import pyplot as plt
 import numpy as np
-from dataloader import davis2017Dataset, Coco2017Dataset, davis2017Datasetv2
+from dataloader import davis2017Dataset, davis2017Datasetv2
 from torchvision import transforms
 from PIL import Image
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-from model2 import build_unet
 from source.eval import evaluation
 from trainer import Trainer
 from torch.utils.data import DataLoader
-from lossfunc import DiceLoss, DiceBCELoss, IoULoss
-from torch import load
-import pickle
 from utils import plotLoss
 from video_segmentation_model import ourModel
-from model4 import UNetWithResnet50Encoder
-from modelvgg import UNet_vgg
+from _old.modelvgg import UNet_vgg
 
 transform = transforms.Compose([
     transforms.Resize(size=(256, 256)),
