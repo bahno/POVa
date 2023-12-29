@@ -76,7 +76,8 @@ class evaluation:
 
     @staticmethod
     def _f1Score(y, pred):
-        return f1_score(y, pred)
+        _f1score = f1_score(y, pred)
+        return _f1score
 
     @staticmethod
     def _compute_jaccard_similarity_score(y, pred):
@@ -112,6 +113,7 @@ class evaluation:
             f1ScoreArray = []
             firstIteration = True
             data_augmenter = DataAugmenter()
+            threshold = -3.0
 
             for prevImage, current, mask in DavisDataloader:
                 if firstIteration:
@@ -124,7 +126,8 @@ class evaluation:
 
                         # TODO hodnota thresholdu je nyní nastavena na -1.5,
                         #  je potřeba zjistit, jaký threshold je nejlepší
-                        out_threshold = torch.where(out > -1.5, 0.0, 1.0)
+                        out_threshold = torch.where(out > threshold, 0.0, 1.0)
+                        """
                         plt.imshow(out_threshold.squeeze(), cmap='viridis', interpolation='nearest')
                         plt.colorbar()
                         plt.show()
@@ -132,8 +135,16 @@ class evaluation:
                         plt.imshow(mask.squeeze(), cmap='viridis', interpolation='nearest')
                         plt.colorbar()
                         plt.show()
-                        jaccardArray.append(self._compute_jaccard_similarity_score(out_threshold.squeeze(), mask.squeeze()))
-                        # f1ScoreArray.append(self._f1Score(out_threshold.squeeze(0), mask))
+                        """
+
+                        jaccardArray.append(
+                            self._compute_jaccard_similarity_score(out_threshold.squeeze(), mask.squeeze()))
+                        f1ScoreArray.append(
+                            self._f1Score(
+                                out_threshold.squeeze().numpy().flatten() == 1,
+                                mask.squeeze().numpy().flatten() == 1
+                            )
+                        )
                 else:
                     with torch.no_grad():
                         if data_augmenter.prev_merged is None:
@@ -145,17 +156,20 @@ class evaluation:
                         # TODO hodnota thresholdu je nyní nastavena na -1.5,
                         #  je potřeba zjistit, jaký threshold je nejlepší
 
-                        out_threshold = torch.where(out > -1.5, 1.0, 0.0)
-                        jaccardArray.append(self._compute_jaccard_similarity_score(out_threshold.squeeze(), mask.squeeze()))
-                        # f1ScoreArray.append(self._f1Score(out_threshold, mask))
+                        out_threshold = torch.where(out > threshold, 1.0, 0.0)
+                        jaccardArray.append(
+                            self._compute_jaccard_similarity_score(out_threshold.squeeze(), mask.squeeze()))
+                        f1ScoreArray.append(self._f1Score(
+                            out_threshold.squeeze().numpy().flatten() == 1,
+                            mask.squeeze().numpy().flatten() == 1
+                        ))
 
                 data_augmenter.set_prev_images(
                     transforms.ToPILImage()(current),
                     transforms.ToPILImage()(out_threshold[0]))
                 data_augmenter.merge_image_and_mask()
 
-            # new_row = {'FileName': FileName, 'f1Score': np.mean(f1ScoreArray), 'Jaccard': np.mean(jaccardArray)}
-            new_row = {'FileName': FileName, 'f1Score': 0, 'Jaccard': np.mean(jaccardArray)}
+            new_row = {'FileName': FileName, 'f1Score': np.mean(f1ScoreArray), 'Jaccard': np.mean(jaccardArray)}
             print(f"idx: {idx}\ndata: {new_row}")
             self.statsFrame = self.statsFrame._append(new_row, ignore_index=True)
 
