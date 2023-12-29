@@ -29,7 +29,7 @@ class Trainer:
         self.trainingLoss = []
         self.validationLoss = []
         self.bestModel = {
-            'model' : None,
+            'models' : None,
             'loss' : None,
             'epoch' : 0
         }
@@ -100,14 +100,14 @@ class Trainer:
                 #valDice.append(DiceLoss(out,gt))
 
         if self.logValidation:
-            if (self.bestModel['model'] == None):
-                self.bestModel['model'] = copy.deepcopy(self.model)
+            if (self.bestModel['models'] == None):
+                self.bestModel['models'] = copy.deepcopy(self.model)
                 self.bestModel['loss'] = np.mean(valLosses)
                 self.bestModel['epoch'] = self.epoch
 
             else:
                 if (np.mean(valLosses) < self.bestModel['loss']):
-                    self.bestModel['model'] = copy.deepcopy(self.model)
+                    self.bestModel['models'] = copy.deepcopy(self.model)
                     self.bestModel['loss'] = np.mean(valLosses)
                     self.bestModel['epoch'] = self.epoch
             

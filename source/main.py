@@ -108,7 +108,7 @@ def train_model(lr=0.005, epochs=40):
     trainData = DataLoader(trainDataset, batch_size=batch_size, shuffle=True)
     valData = DataLoader(valDataset, batch_size=batch_size, shuffle=True)
 
-    # model
+    # models
     model = ourModel()
 
     criterion = nn.BCEWithLogitsLoss()  # DiceLoss()
@@ -124,7 +124,7 @@ def train_model(lr=0.005, epochs=40):
 
     trainLoss, valLoss, bestModel = trainer.run()
 
-    torch.save(bestModel['model'].state_dict(), f"model_lr-{str(lr)}_{epochs}-epochs_{bestModel['loss']}_loss.pth")
+    torch.save(bestModel['models'].state_dict(), f"../models/model_lr-{str(lr)}_{epochs}-epochs_{bestModel['loss']}_loss.pth")
     np.save(f"model_lr-{str(lr)}_{epochs}-valLoss.npz", valLoss)
     np.save(f"model_lr-{str(lr)}_{epochs}-trainLoss.npz", trainLoss)
 
@@ -157,7 +157,7 @@ def train_model_vgg(lr=0.005, epochs=20):
     trainData = DataLoader(trainDataset, batch_size=batch_size, shuffle=True)
     valData = DataLoader(valDataset, batch_size=batch_size, shuffle=True)
 
-    # model
+    # models
     model = UNet_vgg()
 
     criterion = nn.BCEWithLogitsLoss()  # DiceLoss()
@@ -173,7 +173,7 @@ def train_model_vgg(lr=0.005, epochs=20):
 
     trainLoss, valLoss, bestModel = trainer.run()
 
-    torch.save(bestModel['model'].state_dict(), f"model_lr-{str(lr)}_{epochs}-epochs_{bestModel['loss']}_loss.pth")
+    torch.save(bestModel['models'].state_dict(), f"model_lr-{str(lr)}_{epochs}-epochs_{bestModel['loss']}_loss.pth")
     np.save(f"model_lr-{str(lr)}_{epochs}-valLoss.npz", valLoss)
     np.save(f"model_lr-{str(lr)}_{epochs}-trainLoss.npz", trainLoss)
 
@@ -186,4 +186,4 @@ if __name__ == '__main__':
     #    train_model(lr=l)
     #test_model(model_file='model_lr-0.002_20-epochs.pth')
 
-    evaluate_model(model_file='model_lr-0.002_20-epochs.pth')
+    evaluate_model(model_file='../models/model_lr-0.002_20-epochs.pth')

@@ -174,14 +174,14 @@ def main():
         validation_data=(tstData, tstLabels), shuffle=True)
 
     # Save the network:
-    model.save('model.h5')
+    model.save('models.h5')
 
     # Compute network predictions for the test set and show results.
-    print('Compute model predictions for test images and display the results.')
+    print('Compute models predictions for test images and display the results.')
 
     dataToTest = tstData[::20]
 
-    # Compute network (model) responses for dataToTest inputs.
+    # Compute network (models) responses for dataToTest inputs.
     # This should produce a 2D tensor of the 10 class probabilites for each
     # image in dataToTest. The subsequent code displays the predicted classes.
     classProb = model.predict(dataToTest)

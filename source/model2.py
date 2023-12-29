@@ -79,9 +79,9 @@ class build_unet(nn.Module):
         return outputs
 
 """
-model = build_unet()  # předpokládáme RGB obrázky na vstupu a binární segmentaci na výstupu
+models = build_unet()  # předpokládáme RGB obrázky na vstupu a binární segmentaci na výstupu
 criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(models.parameters(), lr=0.001)
 
 # Příklad trénování s daty
 # DataLoader a další úpravy by byly potřeba podle konkrétního datasetu
@@ -108,7 +108,7 @@ for epoch in range(num_epochs):
     # Iterace přes dávky (batche) dat
     for inputs, labels in trainData:
         optimizer.zero_grad()  # Nastavení gradientů na nulu
-        outputs = model(inputs)  # Předpovědi modelu
+        outputs = models(inputs)  # Předpovědi modelu
         loss = criterion(outputs, labels)  # Výpočet ztrát
         loss.backward()  # Zpětný průchod
         optimizer.step()  # Aktualizace vah
