@@ -16,7 +16,7 @@ from lossfunc import DiceLoss, DiceBCELoss, IoULoss
 from torch import load
 import pickle
 from utils import plotLoss
-from model3 import ourModel
+from video_segmentation_model import ourModel
 from model4 import UNetWithResnet50Encoder
 from modelvgg import UNet_vgg
 

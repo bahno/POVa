@@ -14,7 +14,7 @@ import os
 from torchvision.transforms import transforms
 
 from data_augmentation import DataAugmenter
-from source.model3 import ourModel
+from source.video_segmentation_model import ourModel
 
 
 class DavisEvalDataloader(Dataset):
